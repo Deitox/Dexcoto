@@ -496,6 +496,9 @@ func _on_shop_buy(index: int) -> void:
 			pass
 	# Mark as sold and disable button to prevent multiple purchases
 	shop_offers[index]["sold"] = true
+	# Immediately refresh HUD and shop UI while paused
+	_update_weapons_hud()
+	_update_shop_title()
 	_show_shop()
 
 func _on_shop_reroll() -> void:
