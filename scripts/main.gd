@@ -569,8 +569,15 @@ func _on_weapon_added(index: int) -> void:
 	_highlight_hud_slot(index, Color(1.0, 1.0, 0.2))
 
 func _on_weapon_merged(id: String, tier: int, index: int) -> void:
-	_notify("Merged %s to T%d" % [id, tier], _color_for_tier(tier))
+	_notify_shop("Merged %s to T%d" % [id, tier], _color_for_tier(tier))
 	_highlight_hud_slot(index, _color_for_tier(tier))
+
+func _notify_shop(msg: String, col: Color = Color(1,1,1)) -> void:
+	var n := $UI/ShopPanel/ShopNotifications if has_node("UI/ShopPanel/ShopNotifications") else null
+	if n and n.has_method("show_message"):
+		n.call("show_message", msg, col)
+	else:
+		_notify(msg, col)
 
 func _start_next_wave() -> void:
 	wave += 1
