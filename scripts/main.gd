@@ -410,27 +410,35 @@ func _show_shop() -> void:
 		# Border highlight only for weapons the player already owns (helps spot mergable items)
 		if String(o.get("kind","")) == "weapon" and player != null:
 			var wid: String = String(o.get("id", ""))
-			var owned: int = _count_player_weapon(wid)
-			if owned > 0:
+			var wtier: int = int(o.get("tier", 1))
+			var owned_total: int = _count_player_weapon(wid)
+			var owned_same_tier: int = _count_player_weapon_at_tier(wid, wtier)
+			if owned_same_tier >= 2:
+				# Green, thicker border when this purchase would cause an immediate merge
 				var sb := StyleBoxFlat.new()
 				sb.draw_center = false
-				if owned >= 2:
-					sb.border_color = Color(0.3, 1.0, 0.3, 0.95) # brighter for 2+
-					sb.border_width_left = 4
-					sb.border_width_top = 4
-					sb.border_width_right = 4
-					sb.border_width_bottom = 4
-				else:
-					sb.border_color = Color(1.0, 1.0, 0.2, 0.9)
-					sb.border_width_left = 3
-					sb.border_width_top = 3
-					sb.border_width_right = 3
-					sb.border_width_bottom = 3
-				# Apply to all interaction states
+				sb.border_color = Color(0.3, 1.0, 0.3, 0.95)
+				sb.border_width_left = 4
+				sb.border_width_top = 4
+				sb.border_width_right = 4
+				sb.border_width_bottom = 4
 				btns[i].add_theme_stylebox_override("normal", sb)
 				btns[i].add_theme_stylebox_override("hover", sb)
 				btns[i].add_theme_stylebox_override("pressed", sb)
 				btns[i].add_theme_stylebox_override("focus", sb)
+			elif owned_total > 0:
+				# Optional: thin yellow border when owned but not an immediate merge
+				var sb2 := StyleBoxFlat.new()
+				sb2.draw_center = false
+				sb2.border_color = Color(1.0, 1.0, 0.2, 0.9)
+				sb2.border_width_left = 2
+				sb2.border_width_top = 2
+				sb2.border_width_right = 2
+				sb2.border_width_bottom = 2
+				btns[i].add_theme_stylebox_override("normal", sb2)
+				btns[i].add_theme_stylebox_override("hover", sb2)
+				btns[i].add_theme_stylebox_override("pressed", sb2)
+				btns[i].add_theme_stylebox_override("focus", sb2)
 	# If fewer than 3 offers, clear remaining buttons
 	for i in range(shop_offers.size(), 3):
 		btns[i].text = "--"
@@ -445,6 +453,15 @@ func _count_player_weapon(id: String) -> int:
 	var cnt := 0
 	for w in player.weapons:
 		if String(w.get("id","")) == id:
+			cnt += 1
+	return cnt
+
+func _count_player_weapon_at_tier(id: String, tier: int) -> int:
+	if player == null:
+		return 0
+	var cnt := 0
+	for w in player.weapons:
+		if String(w.get("id","")) == id and int(w.get("tier", 1)) == tier:
 			cnt += 1
 	return cnt
 
@@ -559,12 +576,13 @@ func _start_next_wave() -> void:
 	wave += 1
 	elapsed = 0.0
 	in_intermission = false
+	# Pre-wave: place queued turrets and merge before timers start
+	_spawn_pending_turrets()
+	_balance_turrets()
+	_update_ui()
 	wave_timer.start()
 	spawn_timer.wait_time = max(0.25, 1.0 - float(wave) * 0.08)
 	spawn_timer.start()
-	_update_ui()
-	_spawn_pending_turrets()
-	_balance_turrets()
 
 func _balance_turrets() -> void:
 	# Merge turrets if too many: combine 3 of same tier into 1 of next tier until <= 5 remain
@@ -614,10 +632,15 @@ func _spawn_turret_at_with_tier(pos: Vector2, tier: int) -> void:
 		turret_pool.call("spawn_turret", pos, tier)
 	else:
 		var t = TURRET_SCENE.instantiate()
-		t.global_position = pos
-		if t.has_method("set_tier"):
-			t.set_tier(tier)
 		add_child(t)
+		if t.has_method("activate"):
+			t.call("activate", pos, tier, null)
+		else:
+			t.global_position = pos
+			if t.has_method("set_tier"):
+				t.set_tier(tier)
+			if t.has_method("add_to_group"):
+				t.add_to_group("turrets")
 
 func _notify(msg: String, col: Color = Color(1,1,1)) -> void:
 	var n := $UI/Notifications if has_node("UI/Notifications") else null
@@ -685,5 +708,10 @@ func _spawn_turret_at(pos: Vector2) -> void:
 	if TURRET_SCENE == null:
 		return
 	var t = TURRET_SCENE.instantiate()
-	t.global_position = pos
 	add_child(t)
+	if t.has_method("activate"):
+		t.call("activate", pos, 1, null)
+	else:
+		t.global_position = pos
+		if t.has_method("add_to_group"):
+			t.add_to_group("turrets")

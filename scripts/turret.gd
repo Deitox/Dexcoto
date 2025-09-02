@@ -16,6 +16,31 @@ var pool: Node = null
 # Performance caps
 const MIN_TURRET_INTERVAL: float = 0.12
 
+func _color_for_tier(t: int) -> Color:
+	match t:
+		1:
+			return Color(0.85, 0.85, 0.85)
+		2:
+			return Color(0.4, 1.0, 0.4)
+		3:
+			return Color(0.4, 0.6, 1.0)
+		4:
+			return Color(0.8, 0.4, 1.0)
+		5:
+			return Color(1.0, 0.7, 0.2)
+		6:
+			return Color(1.0, 0.3, 0.3) # Mythic
+		7:
+			return Color(0.2, 1.0, 1.0) # Celestial
+		8:
+			return Color(1.0, 0.3, 0.8) # Arcane
+		9:
+			return Color(0.6, 1.0, 0.2) # Radiant
+		10:
+			return Color(1.0, 1.0, 1.0) # Transcendent
+		_:
+			return Color(1,1,1)
+
 func _ready() -> void:
     # Add to group only while active (in activate()).
     _apply_tier()
@@ -47,6 +72,10 @@ func _apply_tier() -> void:
     # Make turret slightly larger per tier
     var s: float = 1.0 + 0.1 * float(t - 1)
     scale = Vector2(s, s)
+    # Color by tier
+    var poly: Polygon2D = $Polygon2D if has_node("Polygon2D") else null
+    if poly:
+        poly.color = _color_for_tier(t)
 
 func _physics_process(delta: float) -> void:
     if not active:
