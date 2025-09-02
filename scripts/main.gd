@@ -41,6 +41,9 @@ extends Node2D
 const ShopDB = preload("res://scripts/shop.gd")
 const TURRET_SCENE: PackedScene = preload("res://scenes/Turret.tscn")
 
+# HUD highlight map for weapon changes while in shop
+var _hud_highlight: Dictionary = {}
+
 # Performance caps
 const SOFT_CAP_ENEMIES: int = 40
 const MAX_ENEMIES: int = 60
@@ -399,8 +402,13 @@ func _show_shop() -> void:
 		btns[i].add_theme_color_override("font_hover_color", rcol)
 		btns[i].add_theme_color_override("font_pressed_color", rcol)
 		btns[i].add_theme_color_override("font_focus_color", rcol)
-		# Border highlight if player already owns this weapon (helps spot mergable items)
-		if String(o.get("kind","")) == "weapon" and player and player.has_method("get"):
+		# Clear any previous border overrides to avoid stale highlights
+		btns[i].remove_theme_stylebox_override("normal")
+		btns[i].remove_theme_stylebox_override("hover")
+		btns[i].remove_theme_stylebox_override("pressed")
+		btns[i].remove_theme_stylebox_override("focus")
+		# Border highlight only for weapons the player already owns (helps spot mergable items)
+		if String(o.get("kind","")) == "weapon" and player != null:
 			var wid: String = String(o.get("id", ""))
 			var owned: int = _count_player_weapon(wid)
 			if owned > 0:
@@ -647,9 +655,6 @@ func _show_character_select() -> void:
 	get_tree().paused = true
 
 func _on_character_chosen(ch: Dictionary) -> void:
-# HUD highlight map for weapon changes while in shop
-var _hud_highlight: Dictionary = {}
-
 	character_panel.visible = false
 	get_tree().paused = false
 	# Apply player color and starting weapon
