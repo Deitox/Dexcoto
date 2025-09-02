@@ -1,4 +1,4 @@
-[gd_scene load_steps=9 format=3 uid="uid://bhxdr0hkjjdby"]
+[gd_scene load_steps=10 format=3 uid="uid://bhxdr0hkjjdby"]
 
 [ext_resource type="Script" uid="uid://bb4or323ojirr" path="res://scripts/main.gd" id="1"]
 [ext_resource type="PackedScene" path="res://scenes/Player.tscn" id="2"]
@@ -8,6 +8,7 @@
 [ext_resource type="Script" uid="uid://di5j080j20vmr" path="res://scripts/bullet_pool.gd" id="6"]
 [ext_resource type="Script" uid="uid://dyulqvr1xh5o5" path="res://scripts/enemy_pool.gd" id="7"]
 [ext_resource type="Script" uid="uid://b1ip1ksoqollc" path="res://scripts/turret_pool.gd" id="8"]
+[ext_resource type="Script" path="res://scripts/arena_bounds.gd" id="9"]
 
 [node name="Main" type="Node2D"]
 script = ExtResource("1")
@@ -266,3 +267,6 @@ script = ExtResource("7")
 
 [node name="TurretPool" type="Node2D" parent="."]
 script = ExtResource("8")
+
+[node name="ArenaBounds" type="Node2D" parent="."]
+script = ExtResource("9")
