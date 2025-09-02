@@ -1,0 +1,59 @@
+extends Area2D
+
+@export var speed: float = 600.0
+@export var lifetime: float = 2.0
+@export var damage: int = 5
+@export var color: Color = Color(1, 1, 0.2)
+
+var direction: Vector2 = Vector2.RIGHT
+var _life := 0.0
+
+@onready var poly: Polygon2D = $Polygon2D
+var active: bool = false
+var pool: Node = null
+
+func _ready() -> void:
+    add_to_group("projectiles")
+    body_entered.connect(_on_body_entered)
+    if poly:
+        poly.color = color
+
+func _physics_process(delta: float) -> void:
+    if not active:
+        return
+    global_position += direction * speed * delta
+    _life += delta
+    if _life > lifetime:
+        _return_to_pool()
+
+func _on_body_entered(body: Node) -> void:
+    if body.is_in_group("enemies"):
+        if body.has_method("take_damage"):
+            body.take_damage(damage)
+        _return_to_pool()
+
+func activate(pos: Vector2, dir: Vector2, spd: float, dmg: int, col: Color, life: float, p: Node) -> void:
+    global_position = pos
+    direction = dir
+    speed = spd
+    damage = dmg
+    color = col
+    lifetime = life
+    _life = 0.0
+    active = true
+    pool = p
+    visible = true
+    monitoring = true
+    if poly:
+        poly.color = color
+
+func deactivate() -> void:
+    active = false
+    visible = false
+    monitoring = false
+
+func _return_to_pool() -> void:
+    if pool and pool.has_method("return_bullet"):
+        pool.call("return_bullet", self)
+    else:
+        queue_free()

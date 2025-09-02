@@ -1,0 +1,535 @@
+extends Node2D
+
+@export var enemy_scene: PackedScene = preload("res://scenes/Enemy.tscn")
+
+@onready var player: Node2D = $Player
+@onready var wave_timer: Timer = $WaveTimer
+@onready var spawn_timer: Timer = $SpawnTimer
+@onready var ui_health: Label = $UI/MarginContainer/HBoxContainer/Health
+@onready var ui_level: Label = $UI/MarginContainer/HBoxContainer/Level
+@onready var ui_wave: Label = $UI/MarginContainer/HBoxContainer/Wave
+@onready var ui_time: Label = $UI/MarginContainer/HBoxContainer/Time
+@onready var ui_score: Label = $UI/MarginContainer/HBoxContainer/Score
+@onready var upgrade_panel: Control = $UI/UpgradePanel
+@onready var upgrade_title: Label = $UI/UpgradePanel/VBox/Title
+@onready var btn1: Button = $UI/UpgradePanel/VBox/Options/Option1
+@onready var btn2: Button = $UI/UpgradePanel/VBox/Options/Option2
+@onready var btn3: Button = $UI/UpgradePanel/VBox/Options/Option3
+
+# Shop UI
+@onready var shop_panel: Control = $UI/ShopPanel
+@onready var shop_title: Label = $UI/ShopPanel/VBox/Title
+@onready var shop_opt1: Button = $UI/ShopPanel/VBox/Options/Option1
+@onready var shop_opt2: Button = $UI/ShopPanel/VBox/Options/Option2
+@onready var shop_opt3: Button = $UI/ShopPanel/VBox/Options/Option3
+@onready var shop_reroll: Button = $UI/ShopPanel/VBox/Bottom/Reroll
+@onready var shop_start: Button = $UI/ShopPanel/VBox/Bottom/StartNext
+
+# Character select UI
+@onready var character_panel: Control = $UI/CharacterSelect
+@onready var char_title: Label = $UI/CharacterSelect/VBox/Title
+@onready var char_opts: GridContainer = $UI/CharacterSelect/VBox/Options
+
+# Use global class UpgradeDB (from upgrades.gd)
+const ShopDB = preload("res://scripts/shop.gd")
+const TURRET_SCENE: PackedScene = preload("res://scenes/Turret.tscn")
+
+var wave: int = 1
+var score: int = 0
+var wave_time: float = 20.0
+var elapsed: float = 0.0
+var is_game_over: bool = false
+var in_intermission: bool = false
+var awaiting_character: bool = true
+
+var level: int = 1
+var xp: int = 0
+var levels_gained_this_wave: int = 0
+var pending_choices: int = 0
+var current_choices: Array[Dictionary] = []
+
+# Currency and shop
+var currency_total: int = 0
+var currency_gained_this_wave: int = 0
+var shop_offers: Array[Dictionary] = []
+
+var pending_turrets: int = 0
+var enemy_pool: Node = null
+var turret_pool: Node = null
+
+func _ready() -> void:
+	randomize()
+	player.add_to_group("player")
+	player.connect("died", Callable(self, "_on_player_died"))
+
+	# Pools
+	if has_node("/root/Main/EnemyPool"):
+		enemy_pool = get_node("/root/Main/EnemyPool")
+	else:
+		enemy_pool = get_tree().get_first_node_in_group("enemy_pool")
+	if has_node("/root/Main/TurretPool"):
+		turret_pool = get_node("/root/Main/TurretPool")
+	else:
+		turret_pool = get_tree().get_first_node_in_group("turret_pool")
+
+	wave_timer.wait_time = wave_time
+	wave_timer.timeout.connect(_on_wave_timer_timeout)
+
+	spawn_timer.wait_time = 1.0
+	spawn_timer.timeout.connect(_on_spawn_timer_timeout)
+
+	_show_character_select()
+	_update_ui()
+
+func _process(delta: float) -> void:
+	if is_game_over:
+		return
+	if not in_intermission and not awaiting_character:
+		elapsed += delta
+		_optimize_runtime()
+	_update_ui()
+
+func _on_spawn_timer_timeout() -> void:
+	_adjust_spawning()
+	_spawn_enemies()
+
+func _on_wave_timer_timeout() -> void:
+	begin_intermission()
+
+func _spawn_enemies() -> void:
+	var base_count := 2 + int(round(float(wave) * 1.5))
+	var enemies := get_tree().get_nodes_in_group("enemies").size()
+	var soft_cap := 40
+	var count := base_count
+	var tier := 1
+	if enemies > soft_cap:
+		# reduce count and increase tier to keep pressure without clutter
+		var over := enemies - soft_cap
+		count = max(1, int(round(float(base_count) * 0.4)))
+		tier = 1 + min(3, int(floor(float(over) / 20.0)) + 1)
+	for i in range(count):
+		var pos := _random_spawn_position()
+		if enemy_pool and enemy_pool.has_method("spawn_enemy"):
+			enemy_pool.call("spawn_enemy", pos, tier, player)
+		else:
+			var e := enemy_scene.instantiate()
+			e.global_position = pos
+			e.target = player
+			if e.has_method("set_tier"):
+				e.set_tier(tier)
+			add_child(e)
+
+func _adjust_spawning() -> void:
+	var enemies := get_tree().get_nodes_in_group("enemies").size()
+	var soft_cap := 40
+	if enemies > soft_cap:
+		spawn_timer.wait_time = min(3.0, spawn_timer.wait_time * 1.25)
+	else:
+		spawn_timer.wait_time = max(0.25, spawn_timer.wait_time * 0.95)
+
+func _random_spawn_position() -> Vector2:
+	var rect := get_viewport().get_visible_rect()
+	var margin := 100.0
+	var side := randi() % 4
+	var x := randf_range(rect.position.x - margin, rect.position.x + rect.size.x + margin)
+	var y := randf_range(rect.position.y - margin, rect.position.y + rect.size.y + margin)
+	if side == 0:
+		y = rect.position.y - margin
+	elif side == 1:
+		x = rect.position.x + rect.size.x + margin
+	elif side == 2:
+		y = rect.position.y + rect.size.y + margin
+	else:
+		x = rect.position.x - margin
+	return Vector2(x, y)
+
+func _on_player_died() -> void:
+	is_game_over = true
+	wave_timer.stop()
+	spawn_timer.stop()
+	var game_over_label := $UI/CenterContainer/GameOverLabel
+	if game_over_label:
+		game_over_label.visible = true
+
+func add_score(pts: int) -> void:
+	score += pts
+	_gain_xp(pts)
+	var mult: float = 1.0
+	if player and player.has_method("get"):
+		mult = float(player.get("currency_gain_mult"))
+	currency_gained_this_wave += int(round(pts * mult))
+	# Lifesteal per kill (pts reflect kills here)
+	if player and player.lifesteal_per_kill > 0:
+		player.health = min(player.max_health, player.health + player.lifesteal_per_kill * pts)
+
+func _update_ui() -> void:
+	if ui_health:
+		ui_health.text = "HP: %d" % player.health
+	if ui_wave:
+		ui_wave.text = "  |  Wave: %d" % wave
+	if ui_time:
+		ui_time.text = "  |  Time: %d" % int(max(0.0, wave_time - elapsed))
+	if ui_score:
+		ui_score.text = "  |  Score: %d" % score
+	if ui_level:
+		var need := _xp_for_next_level(level)
+		ui_level.text = "  |  Lv: %d (%d/%d)" % [level, xp, need]
+	_update_weapons_hud()
+
+func _update_weapons_hud() -> void:
+	var labels: Array = [hud_slot1, hud_slot2, hud_slot3, hud_slot4, hud_slot5, hud_slot6]
+	for i in range(labels.size()):
+		var text := "%d: --" % (i + 1)
+		if i < player.weapons.size():
+			var w: Dictionary = player.weapons[i]
+			var name: String = String(w.get("name", "?"))
+			var tier: int = int(w.get("tier", 1))
+			var cd: float = float(w.get("cd", 0.0))
+			var cd_s: String = ("RDY" if cd <= 0.0 else "%.1fs" % cd)
+			# Remove textual tier tag; color indicates tier
+			text = "%d: %s  [%s]" % [i + 1, name, cd_s]
+		if labels[i]:
+			labels[i].text = text
+			var tier_for_color: int = 1
+			if i < player.weapons.size():
+				tier_for_color = int(player.weapons[i].get("tier", 1))
+			var col := _color_for_tier(tier_for_color)
+			labels[i].add_theme_color_override("font_color", col)
+
+func _xp_for_next_level(l: int) -> int:
+	return 5 + l * 5
+
+func _gain_xp(pts: int) -> void:
+	xp += pts
+	var need := _xp_for_next_level(level)
+	while xp >= need:
+		xp -= need
+		level += 1
+		levels_gained_this_wave += 1
+		need = _xp_for_next_level(level)
+
+func begin_intermission() -> void:
+	if in_intermission:
+		return
+	in_intermission = true
+	spawn_timer.stop()
+	pending_choices = levels_gained_this_wave
+	get_tree().paused = true
+	if pending_choices > 0:
+		_show_upgrade_choices()
+	else:
+		open_shop()
+
+func _show_upgrade_choices() -> void:
+	upgrade_panel.visible = true
+	upgrade_title.text = "Choose an upgrade (%d left)" % pending_choices
+	current_choices = UpgradeDB.weighted_choices(3)
+	var texts: Array[String] = []
+	for u in current_choices:
+		texts.append(String(u["name"]))
+	btn1.text = texts[0]
+	btn2.text = texts[1]
+	btn3.text = texts[2]
+	var r1: String = String(current_choices[0].get("rarity", "Common"))
+	var r2: String = String(current_choices[1].get("rarity", "Common"))
+	var r3: String = String(current_choices[2].get("rarity", "Common"))
+	var c1 := _color_for_rarity(r1)
+	var c2 := _color_for_rarity(r2)
+	var c3 := _color_for_rarity(r3)
+	btn1.add_theme_color_override("font_color", c1)
+	btn1.add_theme_color_override("font_hover_color", c1)
+	btn1.add_theme_color_override("font_pressed_color", c1)
+	btn1.add_theme_color_override("font_focus_color", c1)
+	btn2.add_theme_color_override("font_color", c2)
+	btn2.add_theme_color_override("font_hover_color", c2)
+	btn2.add_theme_color_override("font_pressed_color", c2)
+	btn2.add_theme_color_override("font_focus_color", c2)
+	btn3.add_theme_color_override("font_color", c3)
+	btn3.add_theme_color_override("font_hover_color", c3)
+	btn3.add_theme_color_override("font_pressed_color", c3)
+	btn3.add_theme_color_override("font_focus_color", c3)
+
+func _on_option_pressed(index: int) -> void:
+	if index >= 0 and index < current_choices.size():
+		var upg: Dictionary = current_choices[index]
+		if player and player.has_method("apply_upgrade"):
+			player.apply_upgrade(upg)
+		pending_choices -= 1
+		if pending_choices > 0:
+			_show_upgrade_choices()
+		else:
+			upgrade_panel.visible = false
+			open_shop()
+
+func open_shop() -> void:
+	# Move earned currency to wallet
+	currency_total += currency_gained_this_wave
+	currency_gained_this_wave = 0
+	_generate_shop_offers()
+	_show_shop()
+
+func _generate_shop_offers() -> void:
+	shop_offers = ShopDB.generate_offers(3, wave)
+	# ensure offers carry a 'sold' flag set to false
+	for i in range(shop_offers.size()):
+		shop_offers[i]["sold"] = false
+
+func _show_shop() -> void:
+	shop_panel.visible = true
+	_update_shop_title()
+	var texts: Array[String] = []
+	var btns: Array = [shop_opt1, shop_opt2, shop_opt3]
+	for i in range(min(3, shop_offers.size())):
+		var o: Dictionary = shop_offers[i]
+		var sold := bool(o.get("sold", false))
+		var display_name: String = String(o.get("name","?"))
+		var label := "%s - %d$\n%s" % [display_name, int(o["cost"]), o.get("desc", "")]
+		if sold:
+			label = "%s\n[SOLD OUT]" % o["name"]
+		btns[i].text = label
+		btns[i].disabled = sold
+		# Color: items by rarity; weapons by tier if >1 otherwise rarity
+		var rarity: String = String(o.get("rarity", "Common"))
+		var rcol: Color = _color_for_rarity(rarity)
+		if String(o.get("kind","")) == "weapon":
+			var wtier: int = int(o.get("tier", 1))
+			# Always color weapons by tier for consistency with inventory
+			rcol = _color_for_tier(wtier)
+		if sold:
+			rcol = Color(0.6, 0.6, 0.6)
+		btns[i].add_theme_color_override("font_color", rcol)
+	# If fewer than 3 offers, clear remaining buttons
+	for i in range(shop_offers.size(), 3):
+		btns[i].text = "--"
+		btns[i].disabled = true
+
+func _update_shop_title() -> void:
+	shop_title.text = "Shop - Currency: %d" % currency_total
+
+func _optimize_runtime() -> void:
+	# Placeholder for future frame-based adaptations (pooling, LOD, etc.).
+	# Current adaptive logic handled in spawn adjustment and projectile/turret scaling.
+	pass
+
+func _color_for_rarity(r: String) -> Color:
+	match r:
+		"Common":
+			return Color(0.85, 0.85, 0.85)
+		"Uncommon":
+			return Color(0.4, 1.0, 0.4)
+		"Rare":
+			return Color(0.4, 0.6, 1.0)
+		"Epic":
+			return Color(0.8, 0.4, 1.0)
+		"Legendary":
+			return Color(1.0, 0.7, 0.2)
+		_:
+			return Color(1, 1, 1)
+
+func _color_for_tier(t: int) -> Color:
+	if t <= 1:
+		return Color(0.85, 0.85, 0.85)
+	elif t == 2:
+		return Color(0.4, 1.0, 0.4)
+	elif t == 3:
+		return Color(0.4, 0.6, 1.0)
+	elif t == 4:
+		return Color(0.8, 0.4, 1.0)
+	elif t == 5:
+		return Color(1.0, 0.7, 0.2)
+	else:
+		return Color(1.0, 0.3, 0.3)
+
+func _on_shop_buy(index: int) -> void:
+	if index < 0 or index >= shop_offers.size():
+		return
+	var offer: Dictionary = shop_offers[index]
+	if bool(offer.get("sold", false)):
+		return
+	var cost: int = int(offer["cost"])
+	if currency_total < cost:
+		return
+	# Check capacity/merge before paying
+	if String(offer.get("kind","")) == "weapon":
+		if not (player and player.has_method("can_accept_weapon") and player.can_accept_weapon(offer)):
+			return
+	currency_total -= cost
+	var kind: String = String(offer["kind"])
+	match kind:
+		"weapon":
+			if player and player.has_method("equip_weapon"):
+				player.equip_weapon(offer)
+		"item":
+			var item_id: String = String(offer["id"])
+			match item_id:
+				"money_charm":
+					if player:
+						player.currency_gain_mult *= 1.2
+				"turret":
+					_queue_turret()
+				"scope":
+					if player:
+						player.projectiles_per_shot += 1
+				"overcharger":
+					if player:
+						player.attack_speed_mult *= 1.15
+				"adrenaline":
+					if player:
+						player.regen_per_second += 0.5
+				"lifesteal_charm":
+					if player:
+						player.lifesteal_per_kill += 1
+				_:
+					pass
+		_:
+			pass
+	# Mark as sold and disable button to prevent multiple purchases
+	shop_offers[index]["sold"] = true
+	_show_shop()
+
+func _on_shop_reroll() -> void:
+	var cost := 5
+	if currency_total < cost:
+		return
+	currency_total -= cost
+	_generate_shop_offers()
+	_show_shop()
+
+func _on_shop_start() -> void:
+	shop_panel.visible = false
+	get_tree().paused = false
+	levels_gained_this_wave = 0
+	_start_next_wave()
+
+func _start_next_wave() -> void:
+	wave += 1
+	elapsed = 0.0
+	in_intermission = false
+	wave_timer.start()
+	spawn_timer.wait_time = max(0.25, 1.0 - float(wave) * 0.08)
+	spawn_timer.start()
+	_update_ui()
+	_spawn_pending_turrets()
+	_balance_turrets()
+
+func _balance_turrets() -> void:
+	# Merge turrets if too many: combine 3 of same tier into 1 of next tier until <= 5 remain
+	var all := get_tree().get_nodes_in_group("turrets")
+	var max_allowed := 5
+	var total := all.size()
+	if total <= max_allowed:
+		return
+	# Build tier map
+	var by_tier := {}
+	for t in all:
+		var ti := int(t.get("tier")) if t.has_method("get") else 1
+		if not by_tier.has(ti):
+			by_tier[ti] = []
+		by_tier[ti].append(t)
+	var changed := true
+	while total > max_allowed and changed:
+		changed = false
+		for tier in by_tier.keys():
+			var arr: Array = by_tier[tier]
+			# purge freed nodes
+			arr = arr.filter(func(n): return is_instance_valid(n))
+			by_tier[tier] = arr
+			while arr.size() >= 3 and total > max_allowed:
+				# take three, remove them, spawn one upgraded
+				var to_merge: Array = [arr.pop_back(), arr.pop_back(), arr.pop_back()]
+				for n in to_merge:
+					if is_instance_valid(n):
+						if turret_pool and turret_pool.has_method("return_turret"):
+							turret_pool.call("return_turret", n)
+						else:
+							n.queue_free()
+				total -= 2 # 3 -> 1 reduces by 2
+				var pos := player.global_position + Vector2(randf_range(-80,80), randf_range(-80,80))
+				_spawn_turret_at_with_tier(pos, int(tier) + 1)
+				_notify("Turrets merged to T%d" % (int(tier) + 1), Color(0.8, 0.9, 1.0))
+				changed = true
+			if total <= max_allowed:
+				break
+		if not changed:
+			break
+
+func _spawn_turret_at_with_tier(pos: Vector2, tier: int) -> void:
+	if TURRET_SCENE == null:
+		return
+	if turret_pool and turret_pool.has_method("spawn_turret"):
+		turret_pool.call("spawn_turret", pos, tier)
+	else:
+		var t = TURRET_SCENE.instantiate()
+		t.global_position = pos
+		if t.has_method("set_tier"):
+			t.set_tier(tier)
+		add_child(t)
+
+func _notify(msg: String, col: Color = Color(1,1,1)) -> void:
+	var n := $UI/Notifications if has_node("UI/Notifications") else null
+	if n and n.has_method("show_message"):
+		n.call("show_message", msg, col)
+
+func _begin_first_wave_after_character() -> void:
+	wave = 0
+	awaiting_character = false
+	_start_next_wave()
+
+func _show_character_select() -> void:
+	# Build options from weapons list (plus Starter)
+	character_panel.visible = true
+	# Clear existing buttons
+	for c in char_opts.get_children():
+		c.queue_free()
+	var chars: Array[Dictionary] = []
+	# Starter character
+	chars.append({
+		"id":"starter","name":"Starter","color": Color(1,1,0.2),
+		"weapon": {"kind":"weapon","id":"starter","name":"Starter","fire_interval":0.4,"damage":8,"speed":500.0,"projectiles":1,"color": Color(1,1,0.2)}
+	})
+	for w in ShopDB.weapons():
+		chars.append({"id": w["id"], "name": w["name"], "color": w["color"], "weapon": w})
+	# Create a button per character
+	for ch in chars:
+		var b := Button.new()
+		b.text = String(ch["name"]) 
+		var col: Color = Color(ch["color"])
+		b.add_theme_color_override("font_color", col)
+		b.pressed.connect(Callable(self, "_on_character_chosen").bind(ch))
+		char_opts.add_child(b)
+	char_title.text = "Choose Your Character"
+	get_tree().paused = true
+
+func _on_character_chosen(ch: Dictionary) -> void:
+	character_panel.visible = false
+	get_tree().paused = false
+	# Apply player color and starting weapon
+	if player and player.has_method("set_player_color"):
+		player.set_player_color(Color(ch["color"]))
+	if player and player.has_method("equip_weapon"):
+		player.weapons.clear()
+		player.equip_weapon(Dictionary(ch["weapon"]))
+	_begin_first_wave_after_character()
+
+@onready var hud_slot1: Label = $UI/WeaponsPanel/VBox/Slot1
+@onready var hud_slot2: Label = $UI/WeaponsPanel/VBox/Slot2
+@onready var hud_slot3: Label = $UI/WeaponsPanel/VBox/Slot3
+@onready var hud_slot4: Label = $UI/WeaponsPanel/VBox/Slot4
+@onready var hud_slot5: Label = $UI/WeaponsPanel/VBox/Slot5
+@onready var hud_slot6: Label = $UI/WeaponsPanel/VBox/Slot6
+func _queue_turret() -> void:
+	pending_turrets += 1
+
+func _spawn_pending_turrets() -> void:
+	if pending_turrets <= 0:
+		return
+	for i in range(pending_turrets):
+		_spawn_turret_at(player.global_position + Vector2(randf_range(-80,80), randf_range(-80,80)))
+	pending_turrets = 0
+
+func _spawn_turret_at(pos: Vector2) -> void:
+	if TURRET_SCENE == null:
+		return
+	var t = TURRET_SCENE.instantiate()
+	t.global_position = pos
+	add_child(t)

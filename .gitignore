@@ -1,0 +1,19 @@
+# OS / Editor noise
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Godot 4
+.godot/
+
+# Godot 3
+.import/
+
+# Build artifacts (customize if you export builds here)
+bin/
+build/
+dist/
+*.exe
+*.apk
+*.ipa
+*.zip

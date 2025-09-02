@@ -1,0 +1,252 @@
+extends CharacterBody2D
+
+@export var move_speed: float = 240.0
+@export var max_health: int = 100
+@export var fire_interval: float = 0.35
+@export var bullet_speed: float = 500.0
+@export var bullet_damage: int = 10
+
+var health: int
+var _regen_accum: float = 0.0
+
+# Upgradable/global stats
+var regen_per_second: float = 0.0
+var projectiles_per_shot: int = 0 # extra projectiles added to each weapon's base
+var spread_degrees: float = 14.0
+var input_enabled: bool = true
+var currency_gain_mult: float = 1.0
+var attack_speed_mult: float = 1.0
+var damage_mult: float = 1.0
+var projectile_speed_mult: float = 1.0
+var bullet_color: Color = Color(1, 1, 0.2)
+var lifesteal_per_kill: int = 0
+@onready var body_poly: Polygon2D = $Polygon2D
+
+# Weapon system
+const MAX_WEAPON_SLOTS: int = 6
+var weapons: Array[Dictionary] = [] # each: {id, name, tier, fire_interval, damage, speed, projectiles, color, cd}
+
+@onready var bullet_scene: PackedScene = preload("res://scenes/Bullet.tscn")
+@onready var bullet_pool: Node = null
+
+signal died
+
+func _ready() -> void:
+    health = max_health
+    bullet_pool = get_tree().get_first_node_in_group("bullet_pool")
+
+
+func _physics_process(delta: float) -> void:
+    # Regen
+    if regen_per_second > 0.0 and health > 0 and health < max_health:
+        _regen_accum += regen_per_second * delta
+        var heal: int = int(_regen_accum)
+        if heal > 0:
+            _regen_accum -= float(heal)
+            health = clamp(health + heal, 0, max_health)
+
+    var input_dir: Vector2 = Vector2.ZERO
+    if input_enabled:
+        input_dir = Input.get_vector("ui_left", "ui_right", "ui_up", "ui_down")
+    velocity = input_dir * move_speed
+    move_and_slide()
+
+    var target: Node2D = _get_nearest_enemy()
+    if target:
+        _update_weapons_fire(delta, target.global_position)
+
+func _get_nearest_enemy() -> Node2D:
+    var enemies: Array = get_tree().get_nodes_in_group("enemies")
+    var nearest: Node2D = null
+    var min_d: float = INF
+    for e in enemies:
+        if is_instance_valid(e):
+            var d: float = global_position.distance_squared_to(e.global_position)
+            if d < min_d:
+                min_d = d
+                nearest = e
+    return nearest
+
+func _update_weapons_fire(delta: float, target_pos: Vector2) -> void:
+    for i in range(weapons.size()):
+        var w: Dictionary = weapons[i]
+        w["cd"] = float(w.get("cd", 0.0)) - delta
+        if w["cd"] <= 0.0:
+            _fire_weapon_at(w, target_pos)
+            w["cd"] = float(w["fire_interval"]) / max(0.1, attack_speed_mult)
+        weapons[i] = w
+
+func _fire_weapon_at(w: Dictionary, pos: Vector2) -> void:
+    var dir: Vector2 = (pos - global_position).normalized()
+    var base_proj: int = int(w.get("projectiles", 1))
+    var shots: int = max(1, base_proj + projectiles_per_shot)
+    var dmg: int = int(round(int(w.get("damage", 10)) * damage_mult))
+    var spd: float = float(w.get("speed", 500.0)) * projectile_speed_mult
+    var color: Color = Color(w.get("color", bullet_color))
+    # Projectiles overload control
+    var current: int = get_tree().get_nodes_in_group("projectiles").size()
+    var soft_cap: int = 200
+    if current > soft_cap:
+        var scale_factor: float = clamp(float(soft_cap) / float(current), 0.3, 1.0)
+        shots = max(1, int(round(float(shots) * scale_factor)))
+        dmg = int(round(float(dmg) * (1.0 / scale_factor)))
+    if shots == 1:
+        if bullet_pool and bullet_pool.has_method("spawn_bullet"):
+            bullet_pool.call("spawn_bullet", global_position + dir * 16.0, dir, spd, dmg, color, 2.0)
+        else:
+            var b = bullet_scene.instantiate()
+            get_tree().current_scene.add_child(b)
+            if b.has_method("activate"):
+                b.call("activate", global_position + dir * 16.0, dir, spd, dmg, color, 2.0, null)
+            else:
+                b.global_position = global_position + dir * 16.0
+                b.direction = dir
+                b.speed = spd
+                b.damage = dmg
+                b.color = color
+    else:
+        var total_spread: float = deg_to_rad(spread_degrees)
+        var start_angle: float = -total_spread * 0.5
+        var step: float = 0.0
+        if shots > 1:
+            step = total_spread / float(shots - 1)
+        for i in range(shots):
+            var angle: float = start_angle + step * i
+            var d: Vector2 = dir.rotated(angle)
+            if bullet_pool and bullet_pool.has_method("spawn_bullet"):
+                bullet_pool.call("spawn_bullet", global_position + d * 16.0, d, spd, dmg, color, 2.0)
+            else:
+                var b2 = bullet_scene.instantiate()
+                get_tree().current_scene.add_child(b2)
+                if b2.has_method("activate"):
+                    b2.call("activate", global_position + d * 16.0, d, spd, dmg, color, 2.0, null)
+                else:
+                    b2.global_position = global_position + d * 16.0
+                    b2.direction = d
+                    b2.speed = spd
+                    b2.damage = dmg
+                    b2.color = color
+
+func take_damage(amount: int) -> void:
+    health -= amount
+    if health <= 0:
+        health = 0
+        emit_signal("died")
+
+func apply_upgrade(upg: Dictionary) -> void:
+    var t: String = String(upg.get("type", ""))
+    var v: Variant = upg.get("value")
+    match t:
+        "attack_speed":
+            attack_speed_mult *= (1.0 + float(v))
+        "damage":
+            damage_mult *= (1.0 + float(v))
+        "move_speed":
+            move_speed = move_speed * (1.0 + float(v))
+        "max_hp":
+            max_health += int(v)
+            health = min(max_health, health + int(v))
+        "bullet_speed":
+            projectile_speed_mult *= (1.0 + float(v))
+        "regen":
+            regen_per_second += float(v)
+        "projectiles":
+            projectiles_per_shot += int(v)
+        _:
+            pass
+
+func can_accept_weapon(w: Dictionary) -> bool:
+    if String(w.get("kind", "")) != "weapon":
+        return false
+    var id: String = String(w.get("id", ""))
+    # always accept if we can merge now or have free slot
+    if weapons.size() < MAX_WEAPON_SLOTS:
+        return true
+    # check if adding one more would enable a merge (have at least 2 existing of same id)
+    var count_same: int = 0
+    for ww in weapons:
+        if String(ww.get("id", "")) == id:
+            count_same += 1
+    return count_same >= 2
+
+func equip_weapon(w: Dictionary) -> void:
+    if String(w.get("kind", "")) != "weapon":
+        return
+    var start_tier: int = int(w.get("tier", 1))
+    var inst: Dictionary = {
+        "id": String(w.get("id")),
+        "name": String(w.get("name")),
+        "tier": start_tier,
+        "fire_interval": float(w.get("fire_interval", 0.4)),
+        "damage": int(w.get("damage", 8)),
+        "speed": float(w.get("speed", 500.0)),
+        "projectiles": int(w.get("projectiles", 1)),
+        "color": w.get("color", Color(1,1,0.2)),
+        "cd": 0.0,
+    }
+    # Apply tier scaling if starting above tier 1
+    if start_tier > 1:
+        for t in range(2, start_tier + 1):
+            inst["damage"] = int(round(int(inst["damage"]) * 1.25))
+            inst["fire_interval"] = float(inst["fire_interval"]) * 0.9
+            if t % 3 == 0:
+                inst["projectiles"] = int(inst["projectiles"]) + 1
+    weapons.append(inst)
+    _try_merge_weapon(String(inst["id"]))
+
+func set_player_color(c: Color) -> void:
+    bullet_color = c
+    if body_poly:
+        body_poly.color = c
+
+func _try_merge_weapon(id: String) -> void:
+    # Merge three of same id and same tier into one higher tier. Repeat while possible.
+    var merged: bool = true
+    while merged:
+        merged = false
+        # group indices by tier
+        var by_tier: Dictionary = {}
+        for i in range(weapons.size()):
+            var w: Dictionary = weapons[i]
+            if String(w.get("id","")) != id:
+                continue
+            var t: int = int(w.get("tier",1))
+            if not by_tier.has(t):
+                by_tier[t] = []
+            by_tier[t].append(i)
+        # find any tier with 3 or more
+        for tier in by_tier.keys():
+            var arr: Array = by_tier[tier]
+            if arr.size() >= 3:
+                # remove three highest indices to avoid shifting earlier
+                arr.sort() # ascending
+                var idxs: Array = []
+                var n: int = arr.size()
+                idxs.append(arr[n-1])
+                idxs.append(arr[n-2])
+                idxs.append(arr[n-3])
+                idxs.sort() # ascending for safe removal
+                # base stats from one of them
+                var base: Dictionary = weapons[idxs[-1]]
+                # remove from weapons
+                for j in range(idxs.size()):
+                    var rem_index: int = int(idxs[j])
+                    weapons.remove_at(rem_index)
+                    # adjust other indices > rem_index in all arr entries
+                    for k in range(j+1, idxs.size()):
+                        if int(idxs[k]) > rem_index:
+                            idxs[k] = int(idxs[k]) - 1
+                # create upgraded weapon
+                var new_tier: int = int(tier) + 1
+                var new_inst: Dictionary = base.duplicate(true)
+                new_inst["tier"] = new_tier
+                # scale stats
+                new_inst["damage"] = int(round(int(new_inst["damage"]) * 1.25))
+                new_inst["fire_interval"] = float(new_inst["fire_interval"]) * 0.9
+                if new_tier % 3 == 0:
+                    new_inst["projectiles"] = int(new_inst["projectiles"]) + 1
+                new_inst["cd"] = 0.0
+                weapons.append(new_inst)
+                merged = true
+                break
+        # loop again if merged
