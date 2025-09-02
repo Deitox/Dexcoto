@@ -239,6 +239,42 @@ layout_mode = 2
 size_flags_vertical = 3
 columns = 3
 
+[node name="PausePanel" type="Panel" parent="UI"]
+process_mode = 2
+visible = false
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+
+[node name="VBox" type="VBoxContainer" parent="UI/PausePanel"]
+layout_mode = 0
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -200.0
+offset_top = -140.0
+offset_right = 200.0
+offset_bottom = 120.0
+
+[node name="Title" type="Label" parent="UI/PausePanel/VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "Paused"
+horizontal_alignment = 1
+
+[node name="Resume" type="Button" parent="UI/PausePanel/VBox"]
+layout_mode = 2
+text = "Resume"
+
+[node name="Restart" type="Button" parent="UI/PausePanel/VBox"]
+layout_mode = 2
+text = "Restart"
+
+[node name="Quit" type="Button" parent="UI/PausePanel/VBox"]
+layout_mode = 2
+text = "Quit"
+
 [node name="Notifications" type="Control" parent="UI"]
 layout_mode = 3
 anchors_preset = 10

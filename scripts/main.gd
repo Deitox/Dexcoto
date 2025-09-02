@@ -26,6 +26,12 @@ extends Node2D
 @onready var shop_reroll: Button = $UI/ShopPanel/VBox/Bottom/Reroll
 @onready var shop_start: Button = $UI/ShopPanel/VBox/Bottom/StartNext
 
+# Pause menu UI
+@onready var pause_panel: Control = $UI/PausePanel
+@onready var pause_resume: Button = $UI/PausePanel/VBox/Resume
+@onready var pause_restart: Button = $UI/PausePanel/VBox/Restart
+@onready var pause_quit: Button = $UI/PausePanel/VBox/Quit
+
 # Character select UI
 @onready var character_panel: Control = $UI/CharacterSelect
 @onready var char_title: Label = $UI/CharacterSelect/VBox/Title
@@ -83,6 +89,14 @@ func _ready() -> void:
 	spawn_timer.wait_time = 1.0
 	spawn_timer.timeout.connect(_on_spawn_timer_timeout)
 
+	# Pause menu signals
+	if pause_resume:
+		pause_resume.pressed.connect(_on_pause_resume)
+	if pause_restart:
+		pause_restart.pressed.connect(_on_pause_restart)
+	if pause_quit:
+		pause_quit.pressed.connect(_on_pause_quit)
+
 	_show_character_select()
 	_update_ui()
 	_center_player_in_arena()
@@ -105,6 +119,32 @@ func _process(delta: float) -> void:
 		elapsed += delta
 		_optimize_runtime()
 	_update_ui()
+
+func _unhandled_input(event: InputEvent) -> void:
+	if event.is_action_pressed("ui_cancel"):
+		_toggle_pause()
+
+func _toggle_pause() -> void:
+	if pause_panel == null:
+		return
+	var now_paused := get_tree().paused
+	if now_paused:
+		get_tree().paused = false
+		pause_panel.visible = false
+	else:
+		pause_panel.visible = true
+		get_tree().paused = true
+
+func _on_pause_resume() -> void:
+	get_tree().paused = false
+	pause_panel.visible = false
+
+func _on_pause_restart() -> void:
+	get_tree().paused = false
+	get_tree().reload_current_scene()
+
+func _on_pause_quit() -> void:
+	get_tree().quit()
 
 func _on_spawn_timer_timeout() -> void:
 	_adjust_spawning()
@@ -336,6 +376,30 @@ func _show_shop() -> void:
 		btns[i].add_theme_color_override("font_hover_color", rcol)
 		btns[i].add_theme_color_override("font_pressed_color", rcol)
 		btns[i].add_theme_color_override("font_focus_color", rcol)
+		# Border highlight if player already owns this weapon (helps spot mergable items)
+		if String(o.get("kind","")) == "weapon" and player and player.has_method("get"):
+			var wid: String = String(o.get("id", ""))
+			var owned: int = _count_player_weapon(wid)
+			if owned > 0:
+				var sb := StyleBoxFlat.new()
+				sb.draw_center = false
+				if owned >= 2:
+					sb.border_color = Color(0.3, 1.0, 0.3, 0.95) # brighter for 2+
+					sb.border_width_left = 4
+					sb.border_width_top = 4
+					sb.border_width_right = 4
+					sb.border_width_bottom = 4
+				else:
+					sb.border_color = Color(1.0, 1.0, 0.2, 0.9)
+					sb.border_width_left = 3
+					sb.border_width_top = 3
+					sb.border_width_right = 3
+					sb.border_width_bottom = 3
+				# Apply to all interaction states
+				btns[i].add_theme_stylebox_override("normal", sb)
+				btns[i].add_theme_stylebox_override("hover", sb)
+				btns[i].add_theme_stylebox_override("pressed", sb)
+				btns[i].add_theme_stylebox_override("focus", sb)
 	# If fewer than 3 offers, clear remaining buttons
 	for i in range(shop_offers.size(), 3):
 		btns[i].text = "--"
@@ -343,6 +407,15 @@ func _show_shop() -> void:
 
 func _update_shop_title() -> void:
 	shop_title.text = "Shop - Currency: %d" % currency_total
+
+func _count_player_weapon(id: String) -> int:
+	if player == null:
+		return 0
+	var cnt := 0
+	for w in player.weapons:
+		if String(w.get("id","")) == id:
+			cnt += 1
+	return cnt
 
 func _optimize_runtime() -> void:
 	# Placeholder for future frame-based adaptations (pooling, LOD, etc.).
