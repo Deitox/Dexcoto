@@ -14,7 +14,7 @@ var active: bool = true
 var pool: Node = null
 
 func _ready() -> void:
-    add_to_group("turrets")
+    # Add to group only while active (in activate()).
     _apply_tier()
     bullet_pool = get_tree().get_first_node_in_group("bullet_pool")
 
@@ -60,11 +60,19 @@ func _get_nearest_enemy_in_range() -> Node2D:
     var nearest: Node2D = null
     var min_d: float = range * range
     for e in enemies:
-        if is_instance_valid(e):
-            var d: float = global_position.distance_squared_to(e.global_position)
-            if d < min_d:
-                min_d = d
-                nearest = e
+        if not is_instance_valid(e):
+            continue
+        var is_active := true
+        if e.has_method("get"):
+            var a = e.get("active")
+            if a != null:
+                is_active = bool(a)
+        if not is_active or not e.is_visible_in_tree():
+            continue
+        var d: float = global_position.distance_squared_to(e.global_position)
+        if d < min_d:
+            min_d = d
+            nearest = e
     return nearest
 
 func _shoot(pos: Vector2) -> void:
@@ -95,8 +103,12 @@ func activate(pos: Vector2, t: int, p: Node) -> void:
     set_tier(t)
     pool = p
     active = true
+    if not is_in_group("turrets"):
+        add_to_group("turrets")
     visible = true
 
 func deactivate() -> void:
     active = false
     visible = false
+    if is_in_group("turrets"):
+        remove_from_group("turrets")
