@@ -81,6 +81,18 @@ func _ready() -> void:
 
 	_show_character_select()
 	_update_ui()
+	_center_player_in_arena()
+
+func _center_player_in_arena() -> void:
+	if player == null:
+		return
+	if arena_bounds and arena_bounds.has_method("get_arena_rect"):
+		var r: Rect2 = arena_bounds.call("get_arena_rect")
+		player.global_position = r.position + r.size * 0.5
+		return
+	# Fallback to viewport center
+	var rect := get_viewport().get_visible_rect()
+	player.global_position = rect.position + rect.size * 0.5
 
 func _process(delta: float) -> void:
 	if is_game_over:
