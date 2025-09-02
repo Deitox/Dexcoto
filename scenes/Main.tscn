@@ -271,7 +271,5 @@ script = ExtResource("8")
 [node name="ArenaBounds" type="Node2D" parent="."]
 script = ExtResource("9")
 use_viewport_bounds = true
-outline_visible = true
 outline_color = Color(1, 1, 1, 0.5)
 outline_width = 3.0
-thickness = 32.0
