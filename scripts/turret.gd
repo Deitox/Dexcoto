@@ -13,6 +13,9 @@ var _cd: float = 0.0
 var active: bool = true
 var pool: Node = null
 
+# Performance caps
+const MIN_TURRET_INTERVAL: float = 0.12
+
 func _ready() -> void:
     # Add to group only while active (in activate()).
     _apply_tier()
@@ -53,7 +56,7 @@ func _physics_process(delta: float) -> void:
         var target: Node2D = _get_nearest_enemy_in_range()
         if target:
             _shoot(target.global_position)
-            _cd = fire_interval
+            _cd = max(MIN_TURRET_INTERVAL, fire_interval)
 
 func _get_nearest_enemy_in_range() -> Node2D:
     var enemies: Array = get_tree().get_nodes_in_group("enemies")

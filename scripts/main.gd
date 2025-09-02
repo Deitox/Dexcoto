@@ -35,6 +35,10 @@ extends Node2D
 const ShopDB = preload("res://scripts/shop.gd")
 const TURRET_SCENE: PackedScene = preload("res://scenes/Turret.tscn")
 
+# Performance caps
+const SOFT_CAP_ENEMIES: int = 40
+const MAX_ENEMIES: int = 60
+
 var wave: int = 1
 var score: int = 0
 var wave_time: float = 20.0
@@ -128,14 +132,18 @@ func _spawn_enemies() -> void:
 	var base_count := 2 + int(round(float(wave) * 1.5))
 
 	var enemies := _active_enemies_count()
-	var soft_cap := 40
+	var soft_cap := SOFT_CAP_ENEMIES
 	var count := base_count
-	var tier := 1
+	# Scale enemy power with wave to avoid excessive counts
+	var tier := 1 + int(floor(max(0.0, float(wave - 1)) / 3.0))
 	if enemies > soft_cap:
 		# reduce count and increase tier to keep pressure without clutter
 		var over := enemies - soft_cap
 		count = max(1, int(round(float(base_count) * 0.4)))
-		tier = 1 + min(3, int(floor(float(over) / 20.0)) + 1)
+		tier += min(3, int(floor(float(over) / 20.0)) + 1)
+	# Hard cap: never exceed MAX_ENEMIES active
+	var allowed := max(0, MAX_ENEMIES - enemies)
+	count = min(count, allowed)
 	for i in range(count):
 		var pos := _random_spawn_position()
 		if enemy_pool and enemy_pool.has_method("spawn_enemy"):
@@ -150,7 +158,7 @@ func _spawn_enemies() -> void:
 
 func _adjust_spawning() -> void:
 	var enemies := _active_enemies_count()
-	var soft_cap := 40
+	var soft_cap := SOFT_CAP_ENEMIES
 	if enemies > soft_cap:
 		spawn_timer.wait_time = min(3.0, spawn_timer.wait_time * 1.25)
 	else:
