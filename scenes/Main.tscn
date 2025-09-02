@@ -8,7 +8,7 @@
 [ext_resource type="Script" uid="uid://di5j080j20vmr" path="res://scripts/bullet_pool.gd" id="6"]
 [ext_resource type="Script" uid="uid://dyulqvr1xh5o5" path="res://scripts/enemy_pool.gd" id="7"]
 [ext_resource type="Script" uid="uid://b1ip1ksoqollc" path="res://scripts/turret_pool.gd" id="8"]
-[ext_resource type="Script" path="res://scripts/arena_bounds.gd" id="9"]
+[ext_resource type="Script" uid="uid://7nc3yeerum8l" path="res://scripts/arena_bounds.gd" id="9"]
 
 [node name="Main" type="Node2D"]
 script = ExtResource("1")

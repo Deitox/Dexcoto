@@ -3,6 +3,12 @@ extends Node2D
 @export var thickness: float = 32.0
 @export var use_viewport_bounds: bool = false
 @export var arena_size: Vector2 = Vector2(1024, 576) # used when not using viewport bounds
+@export var outline_visible: bool = true
+@export var outline_color: Color = Color(1, 1, 1, 0.35)
+@export var outline_width: float = 2.0
+
+var rect_origin: Vector2 = Vector2.ZERO
+var rect_size: Vector2 = Vector2.ZERO
 
 func _ready() -> void:
     # Ensure 4 walls exist
@@ -14,6 +20,7 @@ func _ready() -> void:
     _update_walls()
     if get_viewport():
         get_viewport().size_changed.connect(_update_walls)
+    _ensure_outline()
 
 func _ensure_wall(name: String) -> void:
     if not has_node(name):
@@ -46,6 +53,9 @@ func _update_walls() -> void:
         origin = global_position - Vector2(sx, sy) * 0.5
     var t: float = max(1.0, thickness)
 
+    rect_origin = origin
+    rect_size = Vector2(sx, sy)
+
     # Top and bottom span width; left and right span height
     # Use centers positioned just outside the screen so inner edge aligns with viewport edge
     _set_wall(
@@ -68,6 +78,7 @@ func _update_walls() -> void:
         Vector2(origin.x + sx + t * 0.5, origin.y + sy * 0.5),
         Vector2(t, sy + t * 2.0)
     )
+    _update_outline()
 
 func _set_wall(body_name: String, pos: Vector2, size: Vector2) -> void:
     if not has_node(body_name):
@@ -83,3 +94,32 @@ func _set_wall(body_name: String, pos: Vector2, size: Vector2) -> void:
         r = RectangleShape2D.new()
         cs.shape = r
     r.size = size
+
+func _ensure_outline() -> void:
+    var line := get_node_or_null("Outline") as Line2D
+    if line == null:
+        line = Line2D.new()
+        line.name = "Outline"
+        add_child(line)
+    line.default_color = outline_color
+    line.width = outline_width
+    line.visible = outline_visible
+
+func _update_outline() -> void:
+    var line := get_node_or_null("Outline") as Line2D
+    if line == null:
+        return
+    line.visible = outline_visible
+    line.default_color = outline_color
+    line.width = outline_width
+    # position outline at top-left of arena rect and set points locally
+    line.global_position = rect_origin
+    var sx: float = rect_size.x
+    var sy: float = rect_size.y
+    var pts := PackedVector2Array([
+        Vector2(0, 0), Vector2(sx, 0), Vector2(sx, sy), Vector2(0, sy), Vector2(0, 0)
+    ])
+    line.points = pts
+
+func get_arena_rect() -> Rect2:
+    return Rect2(rect_origin, rect_size)
