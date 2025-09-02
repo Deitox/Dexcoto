@@ -101,6 +101,13 @@ func _ready() -> void:
 	_update_ui()
 	_center_player_in_arena()
 
+	# Connect weapon events to update HUD and notify merges
+	if player:
+		if not player.is_connected("weapon_added", Callable(self, "_on_weapon_added")):
+			player.connect("weapon_added", Callable(self, "_on_weapon_added"))
+		if not player.is_connected("weapon_merged", Callable(self, "_on_weapon_merged")):
+			player.connect("weapon_merged", Callable(self, "_on_weapon_merged"))
+
 func _center_player_in_arena() -> void:
 	if player == null:
 		return
@@ -252,10 +259,10 @@ func _update_ui() -> void:
 	_update_weapons_hud()
 
 func _update_weapons_hud() -> void:
-	var labels: Array = [hud_slot1, hud_slot2, hud_slot3, hud_slot4, hud_slot5, hud_slot6]
-	for i in range(labels.size()):
-		var text := "%d: --" % (i + 1)
-		if i < player.weapons.size():
+    var labels: Array = [hud_slot1, hud_slot2, hud_slot3, hud_slot4, hud_slot5, hud_slot6]
+    for i in range(labels.size()):
+        var text := "%d: --" % (i + 1)
+        if i < player.weapons.size():
 			var w: Dictionary = player.weapons[i]
 			var name: String = String(w.get("name", "?"))
 			var tier: int = int(w.get("tier", 1))
@@ -263,13 +270,29 @@ func _update_weapons_hud() -> void:
 			var cd_s: String = ("RDY" if cd <= 0.0 else "%.1fs" % cd)
 			# Remove textual tier tag; color indicates tier
 			text = "%d: %s  [%s]" % [i + 1, name, cd_s]
-		if labels[i]:
-			labels[i].text = text
-			var tier_for_color: int = 1
-			if i < player.weapons.size():
-				tier_for_color = int(player.weapons[i].get("tier", 1))
-			var col := _color_for_tier(tier_for_color)
-			labels[i].add_theme_color_override("font_color", col)
+        if labels[i]:
+            labels[i].text = text
+            var tier_for_color: int = 1
+            if i < player.weapons.size():
+                tier_for_color = int(player.weapons[i].get("tier", 1))
+            var col := _color_for_tier(tier_for_color)
+            labels[i].add_theme_color_override("font_color", col)
+            # Apply or clear highlight outline
+            if _hud_highlight.has(i):
+                var hcol: Color = _hud_highlight[i]
+                labels[i].add_theme_color_override("font_outline_color", hcol)
+                labels[i].add_theme_constant_override("outline_size", 2)
+            else:
+                labels[i].remove_theme_color_override("font_outline_color")
+                labels[i].remove_theme_constant_override("outline_size")
+
+func _highlight_hud_slot(index: int, color: Color) -> void:
+	_hud_highlight[index] = color
+	_update_weapons_hud()
+
+func _clear_hud_highlights() -> void:
+	_hud_highlight.clear()
+	_update_weapons_hud()
 
 func _xp_for_next_level(l: int) -> int:
 	return 5 + l * 5
@@ -510,10 +533,19 @@ func _on_shop_reroll() -> void:
 	_show_shop()
 
 func _on_shop_start() -> void:
-	shop_panel.visible = false
-	get_tree().paused = false
-	levels_gained_this_wave = 0
-	_start_next_wave()
+    shop_panel.visible = false
+    get_tree().paused = false
+    levels_gained_this_wave = 0
+    _clear_hud_highlights()
+    _start_next_wave()
+
+func _on_weapon_added(index: int) -> void:
+	# Yellow outline for new items
+	_highlight_hud_slot(index, Color(1.0, 1.0, 0.2))
+
+func _on_weapon_merged(id: String, tier: int, index: int) -> void:
+	_notify("Merged %s to T%d" % [id, tier], _color_for_tier(tier))
+	_highlight_hud_slot(index, _color_for_tier(tier))
 
 func _start_next_wave() -> void:
 	wave += 1
@@ -615,6 +647,9 @@ func _show_character_select() -> void:
 	get_tree().paused = true
 
 func _on_character_chosen(ch: Dictionary) -> void:
+# HUD highlight map for weapon changes while in shop
+var _hud_highlight: Dictionary = {}
+
 	character_panel.visible = false
 	get_tree().paused = false
 	# Apply player color and starting weapon

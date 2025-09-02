@@ -30,6 +30,8 @@ var weapons: Array[Dictionary] = [] # each: {id, name, tier, fire_interval, dama
 @onready var bullet_pool: Node = null
 
 signal died
+signal weapon_added(index: int)
+signal weapon_merged(id: String, tier: int, index: int)
 
 # Performance caps
 const MAX_TOTAL_PROJECTILES: int = 10
@@ -223,16 +225,26 @@ func equip_weapon(w: Dictionary) -> void:
             if t % 3 == 0:
                 inst["projectiles"] = int(inst["projectiles"]) + 1
     weapons.append(inst)
-    _try_merge_weapon(String(inst["id"]))
+    var added_index: int = weapons.size() - 1
+    var merge_info: Dictionary = _try_merge_weapon(String(inst["id"]))
+    if bool(merge_info.get("merged", false)):
+        var idx: int = int(merge_info.get("index", weapons.size() - 1))
+        var new_tier: int = int(merge_info.get("new_tier", 1))
+        emit_signal("weapon_merged", String(inst["id"]), new_tier, idx)
+    else:
+        emit_signal("weapon_added", added_index)
 
 func set_player_color(c: Color) -> void:
     bullet_color = c
     if body_poly:
         body_poly.color = c
 
-func _try_merge_weapon(id: String) -> void:
+func _try_merge_weapon(id: String) -> Dictionary:
     # Merge three of same id and same tier into one higher tier. Repeat while possible.
     var merged: bool = true
+    var any_merged: bool = false
+    var final_index: int = -1
+    var final_tier: int = 0
     while merged:
         merged = false
         # group indices by tier
@@ -278,6 +290,14 @@ func _try_merge_weapon(id: String) -> void:
                     new_inst["projectiles"] = int(new_inst["projectiles"]) + 1
                 new_inst["cd"] = 0.0
                 weapons.append(new_inst)
+                any_merged = true
+                final_index = weapons.size() - 1
+                final_tier = new_tier
                 merged = true
                 break
         # loop again if merged
+    return {
+        "merged": any_merged,
+        "index": final_index,
+        "new_tier": final_tier,
+    }
