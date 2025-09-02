@@ -129,18 +129,18 @@ func _adjust_spawning() -> void:
 		spawn_timer.wait_time = max(0.25, spawn_timer.wait_time * 0.95)
 
 func _random_spawn_position() -> Vector2:
-    if arena_bounds and arena_bounds.has_method("get_arena_rect"):
-        var r: Rect2 = arena_bounds.call("get_arena_rect")
-        # keep a small margin so spawns are fully inside the walls
-        var m: float = 24.0
-        var x := randf_range(r.position.x + m, r.position.x + r.size.x - m)
-        var y := randf_range(r.position.y + m, r.position.y + r.size.y - m)
-        return Vector2(x, y)
-    # fallback to viewport center area if bounds missing
-    var rect := get_viewport().get_visible_rect()
-    var x2 := randf_range(rect.position.x + 16.0, rect.position.x + rect.size.x - 16.0)
-    var y2 := randf_range(rect.position.y + 16.0, rect.position.y + rect.size.y - 16.0)
-    return Vector2(x2, y2)
+	if arena_bounds and arena_bounds.has_method("get_arena_rect"):
+		var r: Rect2 = arena_bounds.call("get_arena_rect")
+		# keep a small margin so spawns are fully inside the walls
+		var m: float = 24.0
+		var x := randf_range(r.position.x + m, r.position.x + r.size.x - m)
+		var y := randf_range(r.position.y + m, r.position.y + r.size.y - m)
+		return Vector2(x, y)
+	# fallback to viewport center area if bounds missing
+	var rect := get_viewport().get_visible_rect()
+	var x2 := randf_range(rect.position.x + 16.0, rect.position.x + rect.size.x - 16.0)
+	var y2 := randf_range(rect.position.y + 16.0, rect.position.y + rect.size.y - 16.0)
+	return Vector2(x2, y2)
 
 func _on_player_died() -> void:
 	is_game_over = true
