@@ -333,6 +333,9 @@ func _show_shop() -> void:
 		if sold:
 			rcol = Color(0.6, 0.6, 0.6)
 		btns[i].add_theme_color_override("font_color", rcol)
+		btns[i].add_theme_color_override("font_hover_color", rcol)
+		btns[i].add_theme_color_override("font_pressed_color", rcol)
+		btns[i].add_theme_color_override("font_focus_color", rcol)
 	# If fewer than 3 offers, clear remaining buttons
 	for i in range(shop_offers.size(), 3):
 		btns[i].text = "--"
