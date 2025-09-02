@@ -21,3 +21,8 @@ project/assembly_name="Dexcoto"
 [rendering]
 
 renderer/rendering_method="mobile"
+
+[display]
+
+window/size/viewport_width=1080
+window/size/viewport_height=1920
