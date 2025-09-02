@@ -109,9 +109,25 @@ func _on_spawn_timer_timeout() -> void:
 func _on_wave_timer_timeout() -> void:
 	begin_intermission()
 
+
+func _active_enemies_count() -> int:
+	var total := 0
+	for e in get_tree().get_nodes_in_group("enemies"):
+		if not is_instance_valid(e):
+			continue
+		var is_active := true
+		if e.has_method("get"):
+			var a = e.get("active")
+			if a != null:
+				is_active = bool(a)
+		if is_active:
+			total += 1
+	return total
+
 func _spawn_enemies() -> void:
 	var base_count := 2 + int(round(float(wave) * 1.5))
-	var enemies := get_tree().get_nodes_in_group("enemies").size()
+
+	var enemies := _active_enemies_count()
 	var soft_cap := 40
 	var count := base_count
 	var tier := 1
@@ -133,7 +149,7 @@ func _spawn_enemies() -> void:
 			add_child(e)
 
 func _adjust_spawning() -> void:
-	var enemies := get_tree().get_nodes_in_group("enemies").size()
+	var enemies := _active_enemies_count()
 	var soft_cap := 40
 	if enemies > soft_cap:
 		spawn_timer.wait_time = min(3.0, spawn_timer.wait_time * 1.25)

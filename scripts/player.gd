@@ -60,11 +60,20 @@ func _get_nearest_enemy() -> Node2D:
     var nearest: Node2D = null
     var min_d: float = INF
     for e in enemies:
-        if is_instance_valid(e):
-            var d: float = global_position.distance_squared_to(e.global_position)
-            if d < min_d:
-                min_d = d
-                nearest = e
+        if not is_instance_valid(e):
+            continue
+        # Skip pooled/inactive or hidden enemies
+        var is_active := true
+        if e.has_method("get"):
+            var a = e.get("active")
+            if a != null:
+                is_active = bool(a)
+        if not is_active or not e.is_visible_in_tree():
+            continue
+        var d: float = global_position.distance_squared_to(e.global_position)
+        if d < min_d:
+            min_d = d
+            nearest = e
     return nearest
 
 func _update_weapons_fire(delta: float, target_pos: Vector2) -> void:

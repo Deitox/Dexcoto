@@ -15,7 +15,7 @@ var pool: Node = null
 @onready var body_shape: CollisionShape2D = $CollisionShape2D
 
 func _ready() -> void:
-    add_to_group("enemies")
+    # Add to group only while active (done in activate()).
     _apply_tier()
     health = max_health
     if hitbox and not hitbox.body_entered.is_connected(_on_hitbox_body_entered):
@@ -77,6 +77,8 @@ func activate(pos: Vector2, t: int, tgt: Node2D, p: Node) -> void:
     target = tgt
     pool = p
     active = true
+    if not is_in_group("enemies"):
+        add_to_group("enemies")
     visible = true
     modulate.a = 1.0
     if hitbox:
@@ -89,6 +91,8 @@ func activate(pos: Vector2, t: int, tgt: Node2D, p: Node) -> void:
 func deactivate() -> void:
     active = false
     visible = false
+    if is_in_group("enemies"):
+        remove_from_group("enemies")
     if hitbox:
         hitbox.monitoring = false
     if body_shape:

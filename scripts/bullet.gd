@@ -13,7 +13,7 @@ var active: bool = false
 var pool: Node = null
 
 func _ready() -> void:
-    add_to_group("projectiles")
+    # Join projectiles group only while active (done in activate()).
     body_entered.connect(_on_body_entered)
     if poly:
         poly.color = color
@@ -44,6 +44,8 @@ func activate(pos: Vector2, dir: Vector2, spd: float, dmg: int, col: Color, life
     pool = p
     visible = true
     monitoring = true
+    if not is_in_group("projectiles"):
+        add_to_group("projectiles")
     if poly:
         poly.color = color
 
@@ -51,6 +53,8 @@ func deactivate() -> void:
     active = false
     visible = false
     monitoring = false
+    if is_in_group("projectiles"):
+        remove_from_group("projectiles")
 
 func _return_to_pool() -> void:
     if pool and pool.has_method("return_bullet"):
