@@ -142,7 +142,7 @@ func _spawn_enemies() -> void:
 		count = max(1, int(round(float(base_count) * 0.4)))
 		tier += min(3, int(floor(float(over) / 20.0)) + 1)
 	# Hard cap: never exceed MAX_ENEMIES active
-	var allowed := max(0, MAX_ENEMIES - enemies)
+	var allowed: int = max(0, MAX_ENEMIES - enemies)
 	count = min(count, allowed)
 	for i in range(count):
 		var pos := _random_spawn_position()

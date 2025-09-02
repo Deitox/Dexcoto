@@ -83,34 +83,34 @@ func _get_nearest_enemy() -> Node2D:
     return nearest
 
 func _update_weapons_fire(delta: float, target_pos: Vector2) -> void:
-	for i in range(weapons.size()):
-		var w: Dictionary = weapons[i]
-		w["cd"] = float(w.get("cd", 0.0)) - delta
-		if w["cd"] <= 0.0:
-			_fire_weapon_at(w, target_pos)
-			var base_cd: float = float(w["fire_interval"]) / max(0.1, attack_speed_mult)
-			w["cd"] = max(MIN_WEAPON_INTERVAL, base_cd)
-		weapons[i] = w
+    for i in range(weapons.size()):
+        var w: Dictionary = weapons[i]
+        w["cd"] = float(w.get("cd", 0.0)) - delta
+        if w["cd"] <= 0.0:
+            _fire_weapon_at(w, target_pos)
+            var base_cd: float = float(w["fire_interval"]) / max(0.1, attack_speed_mult)
+            w["cd"] = max(MIN_WEAPON_INTERVAL, base_cd)
+        weapons[i] = w
 
 func _fire_weapon_at(w: Dictionary, pos: Vector2) -> void:
-	var dir: Vector2 = (pos - global_position).normalized()
-	var base_proj: int = int(w.get("projectiles", 1))
-	var shots: int = max(1, base_proj + projectiles_per_shot)
-	var dmg: int = int(round(int(w.get("damage", 10)) * damage_mult))
-	var spd: float = float(w.get("speed", 500.0)) * projectile_speed_mult
-	var color: Color = Color(w.get("color", bullet_color))
-	# Cap total projectiles and convert overflow into proportional damage
-	if shots > MAX_TOTAL_PROJECTILES:
-		var scale_up: float = float(shots) / float(MAX_TOTAL_PROJECTILES)
-		shots = MAX_TOTAL_PROJECTILES
-		dmg = int(round(float(dmg) * scale_up))
-	# Projectiles overload control
-	var current: int = get_tree().get_nodes_in_group("projectiles").size()
-	var soft_cap: int = 200
-	if current > soft_cap:
-		var scale_factor: float = clamp(float(soft_cap) / float(current), 0.3, 1.0)
-		shots = max(1, int(round(float(shots) * scale_factor)))
-		dmg = int(round(float(dmg) * (1.0 / scale_factor)))
+    var dir: Vector2 = (pos - global_position).normalized()
+    var base_proj: int = int(w.get("projectiles", 1))
+    var shots: int = max(1, base_proj + projectiles_per_shot)
+    var dmg: int = int(round(int(w.get("damage", 10)) * damage_mult))
+    var spd: float = float(w.get("speed", 500.0)) * projectile_speed_mult
+    var color: Color = Color(w.get("color", bullet_color))
+    # Cap total projectiles and convert overflow into proportional damage
+    if shots > MAX_TOTAL_PROJECTILES:
+        var scale_up: float = float(shots) / float(MAX_TOTAL_PROJECTILES)
+        shots = MAX_TOTAL_PROJECTILES
+        dmg = int(round(float(dmg) * scale_up))
+    # Projectiles overload control
+    var current: int = get_tree().get_nodes_in_group("projectiles").size()
+    var soft_cap: int = 200
+    if current > soft_cap:
+        var scale_factor: float = clamp(float(soft_cap) / float(current), 0.3, 1.0)
+        shots = max(1, int(round(float(shots) * scale_factor)))
+        dmg = int(round(float(dmg) * (1.0 / scale_factor)))
     if shots == 1:
         if bullet_pool and bullet_pool.has_method("spawn_bullet"):
             bullet_pool.call("spawn_bullet", global_position + dir * 16.0, dir, spd, dmg, color, 2.0)
