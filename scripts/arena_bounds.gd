@@ -21,6 +21,7 @@ func _ready() -> void:
     if get_viewport():
         get_viewport().size_changed.connect(_update_walls)
     _ensure_outline()
+    _update_outline()
 
 func _ensure_wall(name: String) -> void:
     if not has_node(name):
@@ -104,6 +105,7 @@ func _ensure_outline() -> void:
     line.default_color = outline_color
     line.width = outline_width
     line.visible = outline_visible
+    line.z_index = 1000
 
 func _update_outline() -> void:
     var line := get_node_or_null("Outline") as Line2D
