@@ -46,42 +46,40 @@ func _update_walls() -> void:
         origin = global_position - Vector2(sx, sy) * 0.5
     var t: float = max(1.0, thickness)
 
-    # Helper to set body position and shape size
-    func set_wall(body_name: String, pos: Vector2, size: Vector2) -> void:
-        if not has_node(body_name):
-            return
-        var body: Node2D = get_node(body_name)
-        body.global_position = pos
-        var cs: CollisionShape2D = body.get_node_or_null("CollisionShape2D")
-        if cs == null:
-            cs = CollisionShape2D.new()
-            body.add_child(cs)
-        var r := cs.shape as RectangleShape2D
-        if r == null:
-            r = RectangleShape2D.new()
-            cs.shape = r
-        # RectangleShape2D expects extents (half-size)
-        r.size = size
-
     # Top and bottom span width; left and right span height
     # Use centers positioned just outside the screen so inner edge aligns with viewport edge
-    set_wall(
+    _set_wall(
         "Top",
         Vector2(origin.x + sx * 0.5, origin.y - t * 0.5),
         Vector2(sx + t * 2.0, t)
     )
-    set_wall(
+    _set_wall(
         "Bottom",
         Vector2(origin.x + sx * 0.5, origin.y + sy + t * 0.5),
         Vector2(sx + t * 2.0, t)
     )
-    set_wall(
+    _set_wall(
         "Left",
         Vector2(origin.x - t * 0.5, origin.y + sy * 0.5),
         Vector2(t, sy + t * 2.0)
     )
-    set_wall(
+    _set_wall(
         "Right",
         Vector2(origin.x + sx + t * 0.5, origin.y + sy * 0.5),
         Vector2(t, sy + t * 2.0)
     )
+
+func _set_wall(body_name: String, pos: Vector2, size: Vector2) -> void:
+    if not has_node(body_name):
+        return
+    var body: Node2D = get_node(body_name)
+    body.global_position = pos
+    var cs: CollisionShape2D = body.get_node_or_null("CollisionShape2D")
+    if cs == null:
+        cs = CollisionShape2D.new()
+        body.add_child(cs)
+    var r := cs.shape as RectangleShape2D
+    if r == null:
+        r = RectangleShape2D.new()
+        cs.shape = r
+    r.size = size
