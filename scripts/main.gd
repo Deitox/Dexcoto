@@ -259,10 +259,10 @@ func _update_ui() -> void:
 	_update_weapons_hud()
 
 func _update_weapons_hud() -> void:
-    var labels: Array = [hud_slot1, hud_slot2, hud_slot3, hud_slot4, hud_slot5, hud_slot6]
-    for i in range(labels.size()):
-        var text := "%d: --" % (i + 1)
-        if i < player.weapons.size():
+	var labels: Array = [hud_slot1, hud_slot2, hud_slot3, hud_slot4, hud_slot5, hud_slot6]
+	for i in range(labels.size()):
+		var text := "%d: --" % (i + 1)
+		if i < player.weapons.size():
 			var w: Dictionary = player.weapons[i]
 			var name: String = String(w.get("name", "?"))
 			var tier: int = int(w.get("tier", 1))
@@ -270,21 +270,21 @@ func _update_weapons_hud() -> void:
 			var cd_s: String = ("RDY" if cd <= 0.0 else "%.1fs" % cd)
 			# Remove textual tier tag; color indicates tier
 			text = "%d: %s  [%s]" % [i + 1, name, cd_s]
-        if labels[i]:
-            labels[i].text = text
-            var tier_for_color: int = 1
-            if i < player.weapons.size():
-                tier_for_color = int(player.weapons[i].get("tier", 1))
-            var col := _color_for_tier(tier_for_color)
-            labels[i].add_theme_color_override("font_color", col)
-            # Apply or clear highlight outline
-            if _hud_highlight.has(i):
-                var hcol: Color = _hud_highlight[i]
-                labels[i].add_theme_color_override("font_outline_color", hcol)
-                labels[i].add_theme_constant_override("outline_size", 2)
-            else:
-                labels[i].remove_theme_color_override("font_outline_color")
-                labels[i].remove_theme_constant_override("outline_size")
+		if labels[i]:
+			labels[i].text = text
+			var tier_for_color: int = 1
+			if i < player.weapons.size():
+				tier_for_color = int(player.weapons[i].get("tier", 1))
+			var col := _color_for_tier(tier_for_color)
+			labels[i].add_theme_color_override("font_color", col)
+			# Apply or clear highlight outline
+			if _hud_highlight.has(i):
+				var hcol: Color = _hud_highlight[i]
+				labels[i].add_theme_color_override("font_outline_color", hcol)
+				labels[i].add_theme_constant_override("outline_size", 2)
+			else:
+				labels[i].remove_theme_color_override("font_outline_color")
+				labels[i].remove_theme_constant_override("outline_size")
 
 func _highlight_hud_slot(index: int, color: Color) -> void:
 	_hud_highlight[index] = color
@@ -533,11 +533,11 @@ func _on_shop_reroll() -> void:
 	_show_shop()
 
 func _on_shop_start() -> void:
-    shop_panel.visible = false
-    get_tree().paused = false
-    levels_gained_this_wave = 0
-    _clear_hud_highlights()
-    _start_next_wave()
+	shop_panel.visible = false
+	get_tree().paused = false
+	levels_gained_this_wave = 0
+	_clear_hud_highlights()
+	_start_next_wave()
 
 func _on_weapon_added(index: int) -> void:
 	# Yellow outline for new items
