@@ -236,16 +236,18 @@ func _on_player_died() -> void:
 	if game_over_label:
 		game_over_label.visible = true
 
-func add_score(pts: int) -> void:
-	score += pts
-	_gain_xp(pts)
+func add_score(kills: int, reward_pts: int) -> void:
+	# Score reflects number of kills.
+	score += kills
+	# XP and currency scale with enemy power via reward_pts.
+	_gain_xp(reward_pts)
 	var mult: float = 1.0
 	if player and player.has_method("get"):
 		mult = float(player.get("currency_gain_mult"))
-	currency_gained_this_wave += int(round(pts * mult))
-	# Lifesteal per kill (pts reflect kills here)
+	currency_gained_this_wave += int(round(reward_pts * mult))
+	# Lifesteal should reflect actual kills, not reward scaling.
 	if player and player.lifesteal_per_kill > 0:
-		player.health = min(player.max_health, player.health + player.lifesteal_per_kill * pts)
+		player.health = min(player.max_health, player.health + player.lifesteal_per_kill * kills)
 
 func _update_ui() -> void:
 	if ui_health:

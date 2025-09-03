@@ -18,7 +18,16 @@ A tiny Godot 4, Brotato-inspired arena survival prototype. Move around, auto-fir
 - `scenes/Player.tscn`: Player character with auto-fire.
 - `scenes/Enemy.tscn`: Basic enemy that chases and deals contact damage.
 - `scenes/Bullet.tscn`: Bullet projectile.
+- `scenes/Beam.tscn`: Beam visual used when projectile speed is very high.
 - `scripts/*.gd`: GDScript logic for the above.
+
+## Performance Notes
+
+- The bullet pool caps extreme projectile speeds to avoid lag. Above a speed threshold, shots render as a short-lived beam and convert excess speed into proportional damage, reducing spawned objects while keeping builds powerful.
+
+## Rewards
+
+- Enemies now grant XP and currency proportional to their power. Higher-tier enemies yield more rewards; the score still reflects kills, while XP and currency scale up with enemy health/damage.
 
 ## Next Ideas
 

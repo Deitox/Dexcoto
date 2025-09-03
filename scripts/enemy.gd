@@ -9,6 +9,7 @@ var target: Node2D
 var tier: int = 1
 var active: bool = true
 var pool: Node = null
+var reward_points: int = 1
 
 @onready var hitbox: Area2D = $Hitbox
 @onready var poly: Polygon2D = $Polygon2D
@@ -41,6 +42,11 @@ func _apply_tier() -> void:
     max_health = hp
     contact_damage = dmg
     move_speed = spd
+    # Compute reward points roughly proportional to enemy power.
+    # Base is 1 at tier 1; scales mostly with HP, slightly with damage.
+    var hp_factor: float = float(max_health) / 20.0
+    var dmg_factor: float = float(contact_damage) / 10.0
+    reward_points = max(1, int(round(hp_factor * 0.8 + dmg_factor * 0.2)))
     var s: float = 1.0 + 0.15 * float(t - 1)
     scale = Vector2(s, s)
     if poly:
@@ -63,7 +69,8 @@ func take_damage(amount: int) -> void:
     health -= amount
     if health <= 0:
         if get_tree().current_scene and get_tree().current_scene.has_method("add_score"):
-            get_tree().current_scene.add_score(1)
+            # Pass 1 kill and reward points scaled to enemy power
+            get_tree().current_scene.add_score(1, reward_points)
         _return_to_pool()
 
 func _on_hitbox_body_entered(body: Node) -> void:
