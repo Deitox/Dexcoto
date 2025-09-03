@@ -379,10 +379,19 @@ func open_shop() -> void:
 	_show_shop()
 
 func _generate_shop_offers() -> void:
-	shop_offers = ShopLib.generate_offers(3, wave)
-	# ensure offers carry a 'sold' flag set to false
-	for i in range(shop_offers.size()):
-		shop_offers[i]["sold"] = false
+	# Generate a new set, but preserve any locked, unsold items in their slots.
+	var prev: Array[Dictionary] = shop_offers
+	var generated: Array[Dictionary] = ShopLib.generate_offers(3, wave)
+	# Initialize flags on generated offers
+	for i in range(generated.size()):
+		generated[i]["sold"] = false
+		generated[i]["locked"] = false
+	# Overlay locked offers from previous list
+	for i in range(min(3, prev.size())):
+		var o: Dictionary = prev[i]
+		if bool(o.get("locked", false)) and not bool(o.get("sold", false)):
+			generated[i] = o
+	shop_offers = generated
 
 func _show_shop() -> void:
 	shop_panel.visible = true
@@ -392,10 +401,13 @@ func _show_shop() -> void:
 	for i in range(min(3, shop_offers.size())):
 		var o: Dictionary = shop_offers[i]
 		var sold := bool(o.get("sold", false))
+		var locked := bool(o.get("locked", false))
 		var display_name: String = String(o.get("name","?"))
 		var label := "%s - %d$\n%s" % [display_name, int(o["cost"]), o.get("desc", "")]
 		if sold:
 			label = "%s\n[SOLD OUT]" % o["name"]
+		elif locked:
+			label = "🔒 %s" % label
 		btns[i].text = label
 		btns[i].disabled = sold
 		# Color: items by rarity; weapons by tier if >1 otherwise rarity
@@ -416,6 +428,19 @@ func _show_shop() -> void:
 		btns[i].remove_theme_stylebox_override("hover")
 		btns[i].remove_theme_stylebox_override("pressed")
 		btns[i].remove_theme_stylebox_override("focus")
+		# Subtle blue border for locked items
+		if locked and not sold:
+			var sbl := StyleBoxFlat.new()
+			sbl.draw_center = false
+			sbl.border_color = Color(0.4, 0.7, 1.0, 0.95)
+			sbl.border_width_left = 3
+			sbl.border_width_top = 3
+			sbl.border_width_right = 3
+			sbl.border_width_bottom = 3
+			btns[i].add_theme_stylebox_override("normal", sbl)
+			btns[i].add_theme_stylebox_override("hover", sbl)
+			btns[i].add_theme_stylebox_override("pressed", sbl)
+			btns[i].add_theme_stylebox_override("focus", sbl)
 		# Border highlight only for weapons the player already owns (helps spot mergable items)
 		if String(o.get("kind","")) == "weapon" and player != null:
 			var wid: String = String(o.get("id", ""))
@@ -553,6 +578,7 @@ func _on_shop_buy(index: int) -> void:
 			pass
 	# Mark as sold and disable button to prevent multiple purchases
 	shop_offers[index]["sold"] = true
+	shop_offers[index]["locked"] = false
 	# Immediately refresh HUD and shop UI while paused
 	_update_weapons_hud()
 	_update_shop_title()
@@ -564,6 +590,15 @@ func _on_shop_reroll() -> void:
 		return
 	currency_total -= cost
 	_generate_shop_offers()
+	_show_shop()
+
+func _on_shop_toggle_lock(index: int) -> void:
+	if index < 0 or index >= shop_offers.size():
+		return
+	if bool(shop_offers[index].get("sold", false)):
+		return
+	var cur := bool(shop_offers[index].get("locked", false))
+	shop_offers[index]["locked"] = not cur
 	_show_shop()
 
 func _on_shop_start() -> void:
@@ -691,11 +726,17 @@ func _show_character_select() -> void:
 		b.pressed.connect(Callable(self, "_on_character_chosen").bind(ch))
 		char_opts.add_child(b)
 	char_title.text = "Choose Your Character"
+	# Pause during character selection (original behavior); PausePanel handles ESC to resume.
 	get_tree().paused = true
 
 func _on_character_chosen(ch: Dictionary) -> void:
 	character_panel.visible = false
 	get_tree().paused = false
+	in_intermission = false
+	if shop_panel:
+		shop_panel.visible = false
+	if pause_panel:
+		pause_panel.visible = false
 	# Apply player color and starting weapon
 	if player and player.has_method("set_player_color"):
 		player.set_player_color(Color(ch["color"]))

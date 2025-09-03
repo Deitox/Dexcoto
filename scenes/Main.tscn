@@ -1,4 +1,4 @@
-[gd_scene load_steps=10 format=3 uid="uid://bhxdr0hkjjdby"]
+[gd_scene load_steps=11 format=3 uid="uid://bhxdr0hkjjdby"]
 
 [ext_resource type="Script" uid="uid://bb4or323ojirr" path="res://scripts/main.gd" id="1"]
 [ext_resource type="PackedScene" path="res://scenes/Player.tscn" id="2"]
@@ -9,6 +9,7 @@
 [ext_resource type="Script" uid="uid://dyulqvr1xh5o5" path="res://scripts/enemy_pool.gd" id="7"]
 [ext_resource type="Script" uid="uid://b1ip1ksoqollc" path="res://scripts/turret_pool.gd" id="8"]
 [ext_resource type="Script" uid="uid://7nc3yeerum8l" path="res://scripts/arena_bounds.gd" id="9"]
+[ext_resource type="Script" uid="uid://c4okqu8rvwqw8" path="res://scripts/pause_panel.gd" id="10"]
 
 [node name="Main" type="Node2D"]
 script = ExtResource("1")
@@ -261,6 +262,7 @@ visible = false
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
+script = ExtResource("10")
 
 [node name="VBox" type="VBoxContainer" parent="UI/PausePanel"]
 layout_mode = 0
