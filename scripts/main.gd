@@ -38,7 +38,7 @@ extends Node2D
 @onready var char_opts: GridContainer = $UI/CharacterSelect/VBox/Options
 
 # Use global class UpgradeDB (from upgrades.gd)
-const ShopDB = preload("res://scripts/shop.gd")
+const ShopLib = preload("res://scripts/shop.gd")
 const TURRET_SCENE: PackedScene = preload("res://scenes/Turret.tscn")
 
 # HUD highlight map for weapon changes while in shop
@@ -116,11 +116,19 @@ func _center_player_in_arena() -> void:
 		return
 	if arena_bounds and arena_bounds.has_method("get_arena_rect"):
 		var r: Rect2 = arena_bounds.call("get_arena_rect")
-		player.global_position = r.position + r.size * 0.5
+		var cpos := r.position + r.size * 0.5
+		if player and player.has_method("set_position_and_reset_guard"):
+			player.call("set_position_and_reset_guard", cpos)
+		else:
+			player.global_position = cpos
 		return
 	# Fallback to viewport center
 	var rect := get_viewport().get_visible_rect()
-	player.global_position = rect.position + rect.size * 0.5
+	var cpos2 := rect.position + rect.size * 0.5
+	if player and player.has_method("set_position_and_reset_guard"):
+		player.call("set_position_and_reset_guard", cpos2)
+	else:
+		player.global_position = cpos2
 
 func _process(delta: float) -> void:
 	if is_game_over:
@@ -269,12 +277,11 @@ func _update_weapons_hud() -> void:
 		var text := "%d: --" % (i + 1)
 		if i < player.weapons.size():
 			var w: Dictionary = player.weapons[i]
-			var name: String = String(w.get("name", "?"))
-			var tier: int = int(w.get("tier", 1))
+			var wname: String = String(w.get("name", "?"))
 			var cd: float = float(w.get("cd", 0.0))
 			var cd_s: String = ("RDY" if cd <= 0.0 else "%.1fs" % cd)
 			# Remove textual tier tag; color indicates tier
-			text = "%d: %s  [%s]" % [i + 1, name, cd_s]
+			text = "%d: %s  [%s]" % [i + 1, wname, cd_s]
 		if labels[i]:
 			labels[i].text = text
 			var tier_for_color: int = 1
@@ -372,7 +379,7 @@ func open_shop() -> void:
 	_show_shop()
 
 func _generate_shop_offers() -> void:
-	shop_offers = ShopDB.generate_offers(3, wave)
+	shop_offers = ShopLib.generate_offers(3, wave)
 	# ensure offers carry a 'sold' flag set to false
 	for i in range(shop_offers.size()):
 		shop_offers[i]["sold"] = false
@@ -380,7 +387,7 @@ func _generate_shop_offers() -> void:
 func _show_shop() -> void:
 	shop_panel.visible = true
 	_update_shop_title()
-	var texts: Array[String] = []
+	# removed unused variable
 	var btns: Array = [shop_opt1, shop_opt2, shop_opt3]
 	for i in range(min(3, shop_offers.size())):
 		var o: Dictionary = shop_offers[i]
@@ -673,7 +680,7 @@ func _show_character_select() -> void:
 		"id":"starter","name":"Starter","color": Color(1,1,0.2),
 		"weapon": {"kind":"weapon","id":"starter","name":"Starter","fire_interval":0.4,"damage":8,"speed":500.0,"projectiles":1,"color": Color(1,1,0.2)}
 	})
-	for w in ShopDB.weapons():
+	for w in ShopLib.weapons():
 		chars.append({"id": w["id"], "name": w["name"], "color": w["color"], "weapon": w})
 	# Create a button per character
 	for ch in chars:

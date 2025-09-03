@@ -22,6 +22,10 @@ var bullet_color: Color = Color(1, 1, 0.2)
 var lifesteal_per_kill: int = 0
 @onready var body_poly: Polygon2D = $Polygon2D
 
+# Debug/guard against rare teleport glitches
+var _last_pos: Vector2 = Vector2.ZERO
+var _teleport_log_cooldown: float = 0.0
+
 # Weapon system
 const MAX_WEAPON_SLOTS: int = 6
 var weapons: Array[Dictionary] = [] # each: {id, name, tier, fire_interval, damage, speed, projectiles, color, cd}
@@ -42,6 +46,13 @@ const MIN_WEAPON_INTERVAL: float = 0.08
 func _ready() -> void:
     health = max_health
     bullet_pool = get_tree().get_first_node_in_group("bullet_pool")
+    _last_pos = global_position
+
+func set_position_and_reset_guard(pos: Vector2) -> void:
+    # Public helper to intentionally reposition the player without triggering the anti-teleport guard.
+    global_position = pos
+    _last_pos = pos
+    velocity = Vector2.ZERO
 
 
 func _physics_process(delta: float) -> void:
@@ -58,6 +69,20 @@ func _physics_process(delta: float) -> void:
         input_dir = Input.get_vector("ui_left", "ui_right", "ui_up", "ui_down")
     velocity = input_dir * move_speed
     move_and_slide()
+
+    # Anti-teleport guard: if we moved an unexpectedly large distance in one physics frame,
+    # cancel the move and zero velocity. This is defensive while we hunt the root cause.
+    var step_dist: float = global_position.distance_to(_last_pos)
+    var expected_step: float = move_speed * delta * 2.5 # generous factor for diagonals/buffs
+    var hard_cap: float = 320.0 # absolute threshold in px/frame
+    if step_dist > max(expected_step, hard_cap):
+        global_position = _last_pos
+        velocity = Vector2.ZERO
+        if _teleport_log_cooldown <= 0.0:
+            print("[Guard] Cancelled abnormal move: ", step_dist)
+            _teleport_log_cooldown = 1.0
+    _teleport_log_cooldown = max(0.0, _teleport_log_cooldown - delta)
+    _last_pos = global_position
 
     var target: Node2D = _get_nearest_enemy()
     if target:

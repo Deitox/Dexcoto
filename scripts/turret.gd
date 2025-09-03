@@ -3,7 +3,7 @@ extends Node2D
 @export var fire_interval: float = 0.8
 @export var damage: int = 6
 @export var speed: float = 480.0
-@export var range: float = 420.0
+@export var attack_range: float = 420.0
 @export var color: Color = Color(0.7, 1.0, 0.3)
 
 var tier: int = 1
@@ -68,7 +68,7 @@ func _apply_tier() -> void:
 	fire_interval = fi
 	damage = dmg
 	speed = proj_speed
-	range = rng
+	attack_range = rng
 	# Make turret slightly larger per tier
 	var s: float = 1.0 + 0.1 * float(t - 1)
 	scale = Vector2(s, s)
@@ -90,7 +90,7 @@ func _physics_process(delta: float) -> void:
 func _get_nearest_enemy_in_range() -> Node2D:
 	var enemies: Array = get_tree().get_nodes_in_group("enemies")
 	var nearest: Node2D = null
-	var min_d: float = range * range
+	var min_d: float = attack_range * attack_range
 	for e in enemies:
 		if not is_instance_valid(e):
 			continue
