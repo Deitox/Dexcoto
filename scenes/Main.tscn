@@ -1,4 +1,4 @@
-[gd_scene load_steps=11 format=3 uid="uid://bhxdr0hkjjdby"]
+[gd_scene load_steps=12 format=3 uid="uid://bhxdr0hkjjdby"]
 
 [ext_resource type="Script" uid="uid://bb4or323ojirr" path="res://scripts/main.gd" id="1"]
 [ext_resource type="PackedScene" path="res://scenes/Player.tscn" id="2"]
@@ -10,6 +10,7 @@
 [ext_resource type="Script" uid="uid://b1ip1ksoqollc" path="res://scripts/turret_pool.gd" id="8"]
 [ext_resource type="Script" uid="uid://7nc3yeerum8l" path="res://scripts/arena_bounds.gd" id="9"]
 [ext_resource type="Script" uid="uid://c4okqu8rvwqw8" path="res://scripts/pause_panel.gd" id="10"]
+[ext_resource type="Script" uid="uid://d1jjya7efdky8" path="res://scripts/item_summary.gd" id="11"]
 
 [node name="Main" type="Node2D"]
 script = ExtResource("1")
@@ -111,6 +112,22 @@ size_flags_horizontal = 3
 size_flags_vertical = 3
 text = "Option 3"
 
+[node name="Summary" type="Control" parent="UI/UpgradePanel/VBox"]
+custom_minimum_size = Vector2(560, 120)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+script = ExtResource("11")
+
+[node name="RichText" type="RichTextLabel" parent="UI/UpgradePanel/VBox/Summary"]
+custom_minimum_size = Vector2(560, 120)
+layout_mode = 2
+size_flags_horizontal = 3
+bbcode_enabled = true
+text = "[b]Items & Effects[/b]
+--"
+autowrap_mode = 2
+
 [node name="ShopPanel" type="Panel" parent="UI"]
 process_mode = 2
 visible = false
@@ -169,6 +186,22 @@ text = "Reroll (5$)"
 [node name="StartNext" type="Button" parent="UI/ShopPanel/VBox/Bottom"]
 layout_mode = 2
 text = "Start Next Wave"
+
+[node name="Summary" type="Control" parent="UI/ShopPanel/VBox"]
+custom_minimum_size = Vector2(560, 120)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+script = ExtResource("11")
+
+[node name="RichText" type="RichTextLabel" parent="UI/ShopPanel/VBox/Summary"]
+custom_minimum_size = Vector2(560, 120)
+layout_mode = 2
+size_flags_horizontal = 3
+bbcode_enabled = true
+text = "[b]Items & Effects[/b]
+--"
+autowrap_mode = 2
 
 [node name="ShopNotifications" type="Control" parent="UI/ShopPanel"]
 anchors_preset = 0
@@ -292,6 +325,22 @@ text = "Restart"
 [node name="Quit" type="Button" parent="UI/PausePanel/VBox"]
 layout_mode = 2
 text = "Quit"
+
+[node name="Summary" type="Control" parent="UI/PausePanel/VBox"]
+custom_minimum_size = Vector2(560, 120)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+script = ExtResource("11")
+
+[node name="RichText" type="RichTextLabel" parent="UI/PausePanel/VBox/Summary"]
+custom_minimum_size = Vector2(560, 120)
+layout_mode = 2
+size_flags_horizontal = 3
+bbcode_enabled = true
+text = "[b]Items & Effects[/b]
+--"
+autowrap_mode = 2
 
 [node name="Notifications" type="Control" parent="UI"]
 layout_mode = 3

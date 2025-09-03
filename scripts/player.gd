@@ -22,6 +22,9 @@ var bullet_color: Color = Color(1, 1, 0.2)
 var lifesteal_per_kill: int = 0
 @onready var body_poly: Polygon2D = $Polygon2D
 
+# Item ownership counts (by item id)
+var item_counts: Dictionary = {}
+
 # Debug/guard against rare teleport glitches
 var _last_pos: Vector2 = Vector2.ZERO
 var _teleport_log_cooldown: float = 0.0
@@ -263,6 +266,13 @@ func set_player_color(c: Color) -> void:
     bullet_color = c
     if body_poly:
         body_poly.color = c
+
+func add_item(id: String) -> void:
+    var cur: int = int(item_counts.get(id, 0))
+    item_counts[id] = cur + 1
+
+func get_item_count(id: String) -> int:
+    return int(item_counts.get(id, 0))
 
 func _try_merge_weapon(id: String) -> Dictionary:
     # Merge three of same id and same tier into one higher tier. Repeat while possible.
