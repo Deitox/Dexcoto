@@ -40,6 +40,7 @@ extends Node2D
 # Use global class UpgradeDB (from upgrades.gd)
 const ShopLib = preload("res://scripts/shop.gd")
 const TURRET_SCENE: PackedScene = preload("res://scenes/Turret.tscn")
+const BOSS_SCENE: PackedScene = preload("res://scenes/Boss.tscn")
 
 # HUD highlight map for weapon changes while in shop
 var _hud_highlight: Dictionary = {}
@@ -634,6 +635,29 @@ func _start_next_wave() -> void:
 	wave_timer.start()
 	spawn_timer.wait_time = max(0.25, 1.0 - float(wave) * 0.08)
 	spawn_timer.start()
+	# Spawn a boss every 5th wave (5,10,15,...) once per wave
+	if wave % 5 == 0:
+		_spawn_boss_for_wave()
+
+func _spawn_boss_for_wave() -> void:
+	if BOSS_SCENE == null:
+		return
+	# Avoid duplicates if one is already alive
+	var existing := get_tree().get_nodes_in_group("boss")
+	for b in existing:
+		if is_instance_valid(b):
+			return
+	var pos := _random_spawn_position()
+	var boss = BOSS_SCENE.instantiate()
+	add_child(boss)
+	if boss.has_method("activate"):
+		boss.call("activate", pos, wave, player)
+	else:
+		boss.global_position = pos
+		if boss.has_method("set_wave"):
+			boss.call("set_wave", wave)
+		if boss.has_method("add_to_group"):
+			boss.add_to_group("boss")
 
 func _balance_turrets() -> void:
 	# Merge turrets if too many: combine 3 of same tier into 1 of next tier until <= 5 remain
