@@ -18,20 +18,6 @@ Tiny Godot 4 arena-survivor prototype. Move, auto-aim at the nearest enemy, and 
 - Intermissions: use the mouse to choose upgrades and buy items.
 - Shop: left-click to buy, right-click an offer to lock/unlock it, use Reroll to refresh unlocked offers.
 
-## Screenshots
-
-Place the following files under `media/` to display inline. Filenames can be changed; update links accordingly.
-
-![Gameplay — Wave](media/gameplay_wave.gif)
-
-![Shop — Lock and Reroll](media/shop_lock_reroll.gif)
-
-![Upgrade Selection](media/upgrade_selection.png)
-
-![Boss Spawn](media/boss_spawn.png)
-
-![Weapons HUD](media/hud_weapons.png)
-
 ## Gameplay Loop
 
 - Survive a timed wave. Enemies scale by wave and by their tier.
@@ -92,3 +78,4 @@ Place the following files under `media/` to display inline. Filenames can be cha
 ## Credits
 
 - Built with Godot 4.x by Deitox. Inspired by Brotato and other arena survival games.
+
