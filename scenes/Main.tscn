@@ -263,10 +263,12 @@ text = "6: --"
 
 [node name="StatsPanel" type="Panel" parent="UI"]
 visible = false
+z_index = 1000
 offset_left = 1640.0
 offset_top = 72.0
 offset_right = 1904.0
 offset_bottom = 1000.0
+mouse_filter = 2
 
 [node name="VBox" type="VBoxContainer" parent="UI/StatsPanel"]
 layout_mode = 2
