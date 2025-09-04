@@ -96,7 +96,7 @@ static func items() -> Array[Dictionary]:
 		{"kind":"item","id":"power_core","name":"Power Core","cost":16,"rarity":"Rare",
 		 "desc":"+10% damage."},
 		{"kind":"item","id":"stabilizer","name":"Stabilizer","cost":10,"rarity":"Uncommon",
-		 "desc":"-2A� spread (tighter shots)."},
+		 "desc":"-2° spread (tighter shots)."},
 		# Elemental Power items
 		{"kind":"item","id":"elemental_amp","name":"Elemental Amplifier","cost":14,"rarity":"Uncommon",
 		 "desc":"+10% Elemental Power."},
@@ -153,4 +153,3 @@ static func _roll_weapon_tier(wave: int) -> int:
 	if r < p2:
 		return 2
 	return 1
-

@@ -37,6 +37,11 @@ func refresh() -> void:
 	var spread_deg: float = float(player.get("spread_degrees"))
 	var currency_mult: float = float(player.get("currency_gain_mult"))
 	var lifesteal: int = int(player.get("lifesteal_per_kill"))
+	# Elemental Power scaling (affects elemental weapons)
+	var elemental_power: float = 1.0
+	var _epv = player.get("elemental_damage_mult")
+	if _epv != null:
+		elemental_power = float(_epv)
 	var beam_threshold: float = 900.0
 	if bullet_pool and bullet_pool.has_method("get_beam_threshold"):
 		beam_threshold = float(bullet_pool.call("get_beam_threshold"))
@@ -65,6 +70,7 @@ func refresh() -> void:
 	lines.append("Min weapon interval: %.2fs" % min_interval)
 	lines.append("Currency Gain: x%.2f" % currency_mult)
 	lines.append("Lifesteal: +%d HP per kill" % lifesteal)
+	lines.append("Elemental Power: x%.2f" % elemental_power)
 	lines.append("Spread: %.1f°" % spread_deg)
 
 	text.bbcode_enabled = true
