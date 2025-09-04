@@ -54,10 +54,12 @@ static func all() -> Array[Dictionary]:
 		{"id":"hp_60","name":"Max HP +60","rarity":"Legendary","type":"max_hp","value":60},
 		{"id":"bs_50","name":"Projectile Speed +50%","rarity":"Legendary","type":"bullet_speed","value":0.50},
 		{"id":"reg_3_0","name":"Regen +3.0/s","rarity":"Legendary","type":"regen","value":3.0},
-		# Elemental Power (affects elemental weapons' damage and effect chance/potency)
-		{"id":"elem_10","name":"Elemental Power +10%","rarity":"Uncommon","type":"elemental_power","value":0.10},
-		{"id":"elem_20","name":"Elemental Power +20%","rarity":"Rare","type":"elemental_power","value":0.20},
-		{"id":"elem_30","name":"Elemental Power +30%","rarity":"Epic","type":"elemental_power","value":0.30},
+        # Elemental Power (affects elemental weapons' damage and effect chance/potency)
+        {"id":"elem_5","name":"Elemental Power +5%","rarity":"Common","type":"elemental_power","value":0.05},
+        {"id":"elem_10","name":"Elemental Power +10%","rarity":"Uncommon","type":"elemental_power","value":0.10},
+        {"id":"elem_20","name":"Elemental Power +20%","rarity":"Rare","type":"elemental_power","value":0.20},
+        {"id":"elem_30","name":"Elemental Power +30%","rarity":"Epic","type":"elemental_power","value":0.30},
+        {"id":"elem_40","name":"Elemental Power +40%","rarity":"Legendary","type":"elemental_power","value":0.40},
 	]
 
 static func weighted_choices(count: int, exclude_ids: Array[String] = []) -> Array[Dictionary]:

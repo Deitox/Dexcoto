@@ -717,6 +717,22 @@ func _on_shop_buy(index: int) -> void:
 					if player:
 						player.spread_degrees = max(0.0, player.spread_degrees - 2.0)
 						player.add_item("stabilizer")
+				"elemental_amp":
+					if player:
+						player.elemental_damage_mult *= 1.10
+						player.add_item("elemental_amp")
+				"elemental_catalyst":
+					if player:
+						player.elemental_damage_mult *= 1.20
+						player.add_item("elemental_catalyst")
+				"elemental_core":
+					if player:
+						player.elemental_damage_mult *= 1.30
+						player.add_item("elemental_core")
+				"arcanum":
+					if player:
+						player.elemental_damage_mult *= 1.40
+						player.add_item("arcanum")
 				_:
 					pass
 		_:
@@ -869,6 +885,15 @@ func _notify(msg: String, col: Color = Color(1,1,1)) -> void:
 	if n and n.has_method("show_message"):
 		n.call("show_message", msg, col)
 
+func _as_color(v: Variant) -> Color:
+	if v is Color:
+		return v
+	# Accept common representations; fall back to white
+	if v is String:
+		# Try parsing hex like "#RRGGBB"; Godot Color can parse some strings, but be safe
+		return Color(1,1,1)
+	return Color(1,1,1)
+
 func _begin_first_wave_after_character() -> void:
 	wave = 0
 	awaiting_character = false
@@ -887,12 +912,13 @@ func _show_character_select() -> void:
 		"weapon": {"kind":"weapon","id":"starter","name":"Starter","fire_interval":0.4,"damage":8,"speed":500.0,"projectiles":1,"color": Color(1,1,0.2)}
 	})
 	for w in ShopLib.weapons():
-		chars.append({"id": w["id"], "name": w["name"], "color": w["color"], "weapon": w})
+		var wcol: Color = _as_color(w.get("color", Color(1,1,1)))
+		chars.append({"id": w["id"], "name": w["name"], "color": wcol, "weapon": w})
 	# Create a button per character
 	for ch in chars:
 		var b := Button.new()
 		b.text = String(ch["name"]) 
-		var col: Color = Color(ch["color"])
+		var col: Color = _as_color(ch.get("color", Color(1,1,1)))
 		b.add_theme_color_override("font_color", col)
 		b.pressed.connect(Callable(self, "_on_character_chosen").bind(ch))
 		char_opts.add_child(b)
@@ -910,7 +936,7 @@ func _on_character_chosen(ch: Dictionary) -> void:
 		pause_panel.visible = false
 	# Apply player color and starting weapon
 	if player and player.has_method("set_player_color"):
-		player.set_player_color(Color(ch["color"]))
+		player.set_player_color(_as_color(ch.get("color", Color(1,1,0.2))))
 	if player and player.has_method("equip_weapon"):
 		player.weapons.clear()
 		player.equip_weapon(Dictionary(ch["weapon"]))

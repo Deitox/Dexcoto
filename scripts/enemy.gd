@@ -15,6 +15,9 @@ var reward_points: int = 1
 @onready var poly: Polygon2D = $Polygon2D
 @onready var body_shape: CollisionShape2D = $CollisionShape2D
 
+# Base color cache for tinting
+var _base_poly_modulate: Color = Color(1,1,1,1)
+
 # Elemental status effects
 var ignite_time: float = 0.0
 var ignite_dps: float = 0.0
@@ -23,12 +26,19 @@ var freeze_time: float = 0.0
 var void_time: float = 0.0
 var void_vuln: float = 0.0
 
+# FX nodes
+var ignite_fx: Line2D = null
+var void_aura: Line2D = null
+var void_max_time: float = 0.0
+
 func _ready() -> void:
 	# Add to group only while active (done in activate()).
 	_apply_tier()
 	health = max_health
 	if hitbox and not hitbox.body_entered.is_connected(_on_hitbox_body_entered):
 		hitbox.body_entered.connect(_on_hitbox_body_entered)
+	if poly:
+		_base_poly_modulate = poly.modulate
 
 func set_tier(t: int) -> void:
 	tier = max(1, t)
@@ -77,6 +87,7 @@ func _physics_process(_delta: float) -> void:
 		freeze_time = max(0.0, freeze_time - delta)
 	if void_time > 0.0:
 		void_time = max(0.0, void_time - delta)
+	_update_status_visuals()
 	if target == null or not is_instance_valid(target):
 		var players: Array = get_tree().get_nodes_in_group("player")
 		if players.size() > 0:
@@ -139,6 +150,7 @@ func deactivate() -> void:
 	freeze_time = 0.0
 	void_time = 0.0
 	void_vuln = 0.0
+	_clear_status_visuals()
 
 func _return_to_pool() -> void:
 	if pool and pool.has_method("return_enemy"):
@@ -170,7 +182,9 @@ func apply_elemental_effect(effect: Dictionary, hit_damage: int, _hit_pos: Vecto
 			_apply_shock_arcs(hit_damage, count, radius, factor2)
 		"void":
 			void_vuln = max(void_vuln, float(effect.get("vuln", 0.2)) * power)
-			void_time = max(void_time, float(effect.get("vuln_duration", 2.0)))
+			var vd := float(effect.get("vuln_duration", 2.0))
+			void_time = max(void_time, vd)
+			void_max_time = max(void_max_time, vd)
 		_:
 			pass
 
@@ -189,3 +203,91 @@ func _apply_shock_arcs(base_damage: int, count: int, radius: float, factor: floa
 			if e.has_method("take_damage"):
 				e.take_damage(int(round(float(base_damage) * factor)))
 				hits += 1
+				_spawn_shock_arc(global_position, pos)
+
+func _ensure_ignite_fx() -> void:
+	if ignite_fx != null and is_instance_valid(ignite_fx):
+		return
+	ignite_fx = Line2D.new()
+	ignite_fx.width = 3.0
+	ignite_fx.default_color = Color(1.0, 0.55, 0.2, 0.9)
+	ignite_fx.z_index = 1200
+	var pts := PackedVector2Array([
+		Vector2(-6, 6), Vector2(0, -10), Vector2(6, 6), Vector2(0, -16), Vector2(-6, 6)
+	])
+	ignite_fx.points = pts
+	add_child(ignite_fx)
+	ignite_fx.position = Vector2.ZERO
+
+func _clear_ignite_fx() -> void:
+	if ignite_fx != null and is_instance_valid(ignite_fx):
+		ignite_fx.queue_free()
+	ignite_fx = null
+
+func _ensure_void_aura() -> void:
+	if void_aura != null and is_instance_valid(void_aura):
+		return
+	void_aura = Line2D.new()
+	void_aura.width = 2.0
+	void_aura.default_color = Color(0.8, 0.4, 1.0, 0.8)
+	void_aura.z_index = 1100
+	var r: float = 18.0 * scale.x
+	var segs: int = 32
+	var pts2 := PackedVector2Array()
+	for s in range(segs + 1):
+		var a := TAU * float(s) / float(segs)
+		pts2.append(Vector2(cos(a), sin(a)) * r)
+	void_aura.points = pts2
+	add_child(void_aura)
+	void_aura.position = Vector2.ZERO
+
+func _clear_void_aura() -> void:
+	if void_aura != null and is_instance_valid(void_aura):
+		void_aura.queue_free()
+	void_aura = null
+	void_max_time = 0.0
+
+func _spawn_shock_arc(from_pos: Vector2, to_pos: Vector2) -> void:
+	var arc := Line2D.new()
+	arc.width = 3.0
+	arc.default_color = Color(0.6, 1.0, 1.0, 0.9)
+	arc.z_index = 1300
+	arc.points = PackedVector2Array([Vector2.ZERO, (to_pos - from_pos)])
+	add_child(arc)
+	arc.global_position = from_pos
+	var tw := create_tween()
+	tw.tween_property(arc, "modulate:a", 0.0, 0.2)
+	tw.tween_callback(arc.queue_free)
+
+func _update_status_visuals() -> void:
+	# Freeze tint
+	if poly:
+		if freeze_time > 0.0:
+			poly.modulate = Color(0.7, 0.85, 1.0, 1.0)
+		else:
+			poly.modulate = _base_poly_modulate
+	# Ignite flames
+	if ignite_time > 0.0:
+		_ensure_ignite_fx()
+		if ignite_fx:
+			# simple pulse
+			var t: float = sin(Time.get_ticks_msec() / 60.0) * 0.1 + 1.0
+			ignite_fx.scale = Vector2(t, t)
+	else:
+		_clear_ignite_fx()
+	# Void aura
+	if void_time > 0.0:
+		_ensure_void_aura()
+		if void_aura and void_max_time > 0.0:
+			var alpha: float = float(clamp(void_time / void_max_time, 0.0, 1.0))
+			var c: Color = void_aura.default_color
+			c.a = 0.2 + 0.6 * alpha
+			void_aura.default_color = c
+	else:
+		_clear_void_aura()
+
+func _clear_status_visuals() -> void:
+	if poly:
+		poly.modulate = _base_poly_modulate
+	_clear_ignite_fx()
+	_clear_void_aura()
