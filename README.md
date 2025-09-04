@@ -34,6 +34,7 @@ Tiny Godot 4 arena-survivor prototype. Move, auto-aim at the nearest enemy, and 
 - Enemies & Boss: Enemies scale by tier; bosses scale by wave. Kills grant score, XP, and currency based on enemy power.
 - Character Select: Choose a starter at the beginning (from the weapon list), which sets your color and initial weapon.
 - HUD & Shop UX: Weapon HUD shows tier coloring; new/merged weapons get temporary highlights. Shop buttons color by rarity/tier; right-click locks offers. Reroll costs 5 and preserves locked, unsold offers.
+ - Elemental System: Elemental weapons scale with your Elemental Power stat (upgrades). Fire can Ignite (DoT), Cryo can Freeze (briefly immobilize), Shock can Arc to nearby enemies, and Void can inflict Vulnerable (take increased damage) — chances and potency grow with Elemental Power.
 
 ## Performance Notes
 
@@ -44,9 +45,10 @@ Tiny Godot 4 arena-survivor prototype. Move, auto-aim at the nearest enemy, and 
 
 ## Content Overview
 
-- Weapons (selection): Pistol, SMG, Shotgun, Rifle, Minigun, Cannon, Laser, Railgun, Flamethrower, Boomerang, Crossbow, Burst Pistol, Splitter, Cannon Mk.II.
+- Weapons (selection): Pistol, SMG, Shotgun, Rifle, Minigun, Cannon, Laser, Railgun, Flamethrower (Fire), Cryo Blaster (Cryo), Shock Rifle (Shock), Void Projector (Void), Boomerang, Crossbow, Burst Pistol, Splitter, Cannon Mk.II.
 - Items (selection): Money Charm, Turret, Scope, Overcharger, Adrenaline, Lifesteal Charm, Boots, Caffeine, Ammo Belt, Aerodynamics, Protein Bar, Medkit, Greed Token, Vampiric Orb, Power Core, Stabilizer.
 - Upgrades: Weighted by rarity (Common → Legendary). Categories include Attack Speed, Damage, Move Speed, Max HP, Projectile Speed, Regeneration, and +Projectiles.
+ - Elemental Power: New upgrade that boosts elemental weapons’ damage and effect chance/potency.
 
 ## Project Structure
 

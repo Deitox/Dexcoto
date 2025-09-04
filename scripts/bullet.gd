@@ -11,6 +11,7 @@ var _life := 0.0
 @onready var poly: Polygon2D = $Polygon2D
 var active: bool = false
 var pool: Node = null
+var effect: Dictionary = {}
 
 func _ready() -> void:
 	# Join projectiles group only while active (done in activate()).
@@ -30,9 +31,13 @@ func _on_body_entered(body: Node) -> void:
 	if body.is_in_group("enemies"):
 		if body.has_method("take_damage"):
 			body.take_damage(damage)
+		# Apply elemental effect if supported
+		if effect != null and effect is Dictionary and effect.size() > 0:
+			if body.has_method("apply_elemental_effect"):
+				body.call("apply_elemental_effect", effect, damage, global_position)
 		_return_to_pool()
 
-func activate(pos: Vector2, dir: Vector2, spd: float, dmg: int, col: Color, life: float, p: Node) -> void:
+func activate(pos: Vector2, dir: Vector2, spd: float, dmg: int, col: Color, life: float, p: Node, eff: Dictionary = {}) -> void:
 	global_position = pos
 	direction = dir
 	speed = spd
@@ -42,6 +47,7 @@ func activate(pos: Vector2, dir: Vector2, spd: float, dmg: int, col: Color, life
 	_life = 0.0
 	active = true
 	pool = p
+	effect = eff if eff != null else {}
 	visible = true
 	set_deferred("monitoring", true)
 	if not is_in_group("projectiles"):

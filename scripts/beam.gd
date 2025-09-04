@@ -8,6 +8,7 @@ extends Node2D
 var _time := 0.0
 var _active := false
 var _damage: int = 0
+var _effect: Dictionary = {}
 
 @onready var line: Line2D = $Line2D
 
@@ -16,10 +17,11 @@ func _ready() -> void:
 		line.width = width
 		line.default_color = color
 
-func activate(pos: Vector2, dir: Vector2, dmg: int, col: Color, length: float = -1.0) -> void:
+func activate(pos: Vector2, dir: Vector2, dmg: int, col: Color, effect: Dictionary = {}, length: float = -1.0) -> void:
 	global_position = pos
 	_damage = dmg
 	color = col
+	_effect = effect if effect != null else {}
 	if line:
 		line.default_color = color
 	var beam_len: float = max_length if length <= 0.0 else length
@@ -36,6 +38,8 @@ func activate(pos: Vector2, dir: Vector2, dmg: int, col: Color, length: float = 
 		var collider = hit.get("collider")
 		if collider and collider.is_in_group("enemies") and collider.has_method("take_damage"):
 			collider.take_damage(_damage)
+			if _effect is Dictionary and _effect.size() > 0 and collider.has_method("apply_elemental_effect"):
+				collider.apply_elemental_effect(_effect, _damage, end_point)
 	_set_line(Vector2.ZERO, (end_point - pos))
 	_time = 0.0
 	_active = true
