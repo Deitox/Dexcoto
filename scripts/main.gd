@@ -5,6 +5,7 @@ func _refresh_item_summaries() -> void:
 		"UI/ShopPanel/VBox/Summary",
 		"UI/UpgradePanel/VBox/Summary",
 		"UI/PausePanel/VBox/Summary",
+		"UI/StatsPanel/VBox/Stats",
 	]
 	for p in paths:
 		if has_node(p):

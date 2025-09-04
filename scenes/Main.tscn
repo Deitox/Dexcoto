@@ -1,4 +1,4 @@
-[gd_scene load_steps=12 format=3 uid="uid://bhxdr0hkjjdby"]
+[gd_scene load_steps=13 format=3 uid="uid://bhxdr0hkjjdby"]
 
 [ext_resource type="Script" uid="uid://bb4or323ojirr" path="res://scripts/main.gd" id="1"]
 [ext_resource type="PackedScene" path="res://scenes/Player.tscn" id="2"]
@@ -11,6 +11,7 @@
 [ext_resource type="Script" uid="uid://7nc3yeerum8l" path="res://scripts/arena_bounds.gd" id="9"]
 [ext_resource type="Script" uid="uid://c4okqu8rvwqw8" path="res://scripts/pause_panel.gd" id="10"]
 [ext_resource type="Script" uid="uid://d1jjya7efdky8" path="res://scripts/item_summary.gd" id="11"]
+[ext_resource type="Script" uid="uid://nsgytfg2e5lw" path="res://scripts/stats_panel.gd" id="12"]
 
 [node name="Main" type="Node2D"]
 script = ExtResource("1")
@@ -259,6 +260,39 @@ text = "5: --"
 [node name="Slot6" type="Label" parent="UI/WeaponsPanel/VBox"]
 layout_mode = 2
 text = "6: --"
+
+[node name="StatsPanel" type="Panel" parent="UI"]
+offset_left = 1640.0
+offset_top = 72.0
+offset_right = 1884.0
+offset_bottom = 420.0
+
+[node name="VBox" type="VBoxContainer" parent="UI/StatsPanel"]
+layout_mode = 2
+offset_left = 8.0
+offset_top = 8.0
+offset_right = 8.0
+offset_bottom = 8.0
+
+[node name="Title" type="Label" parent="UI/StatsPanel/VBox"]
+layout_mode = 2
+text = "Stats"
+
+[node name="Stats" type="Control" parent="UI/StatsPanel/VBox"]
+custom_minimum_size = Vector2(240, 280)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+script = ExtResource("12")
+
+[node name="RichText" type="RichTextLabel" parent="UI/StatsPanel/VBox/Stats"]
+custom_minimum_size = Vector2(240, 280)
+layout_mode = 2
+size_flags_horizontal = 3
+bbcode_enabled = true
+text = "[b]Player Stats[/b]
+--"
+autowrap_mode = 2
 
 [node name="CharacterSelect" type="Panel" parent="UI"]
 process_mode = 2

@@ -25,6 +25,10 @@ var lifesteal_per_kill: int = 0
 # Item ownership counts (by item id)
 var item_counts: Dictionary = {}
 
+# Track bonus damage gained from exceeding caps
+var overflow_damage_mult_from_attack_speed: float = 1.0
+var overflow_damage_mult_from_projectiles: float = 1.0
+
 # Debug/guard against rare teleport glitches
 var _last_pos: Vector2 = Vector2.ZERO
 var _teleport_log_cooldown: float = 0.0
@@ -194,6 +198,7 @@ func apply_upgrade(upg: Dictionary) -> void:
                 var overflow_factor: float = attack_speed_mult / MAX_ATTACK_SPEED_MULT
                 attack_speed_mult = MAX_ATTACK_SPEED_MULT
                 damage_mult *= overflow_factor
+                overflow_damage_mult_from_attack_speed *= overflow_factor
         "damage":
             damage_mult *= (1.0 + float(v))
         "move_speed":
@@ -213,6 +218,7 @@ func apply_upgrade(upg: Dictionary) -> void:
                 else:
                     # Convert surplus projectile into ~10% damage (approx equal to going from 10->11 projectiles)
                     damage_mult *= 1.1
+                    overflow_damage_mult_from_projectiles *= 1.1
         _:
             pass
 

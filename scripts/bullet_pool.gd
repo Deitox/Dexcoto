@@ -39,3 +39,6 @@ func return_bullet(b: Node) -> void:
     if b.has_method("deactivate"):
         b.call("deactivate")
     pool.append(b)
+
+func get_beam_threshold() -> float:
+    return SPEED_BEAM_THRESHOLD
