@@ -424,6 +424,8 @@ func _show_shop() -> void:
 		elif locked:
 			label = "🔒 %s" % label
 		btns[i].text = label
+		if locked and not sold:
+			btns[i].text = "[LOCKED] " + btns[i].text
 		btns[i].disabled = sold
 		# Color: items by rarity; weapons by tier if >1 otherwise rarity
 		var rarity: String = String(o.get("rarity", "Common"))

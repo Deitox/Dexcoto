@@ -220,15 +220,16 @@ func can_accept_weapon(w: Dictionary) -> bool:
     if String(w.get("kind", "")) != "weapon":
         return false
     var id: String = String(w.get("id", ""))
-    # always accept if we can merge now or have free slot
+    var tier: int = int(w.get("tier", 1))
+    # Always accept if we have a free slot
     if weapons.size() < MAX_WEAPON_SLOTS:
         return true
-    # check if adding one more would enable a merge (have at least 2 existing of same id)
-    var count_same: int = 0
+    # Only accept when full if this purchase enables an immediate merge
+    var count_same_tier: int = 0
     for ww in weapons:
-        if String(ww.get("id", "")) == id:
-            count_same += 1
-    return count_same >= 2
+        if String(ww.get("id", "")) == id and int(ww.get("tier", 1)) == tier:
+            count_same_tier += 1
+    return count_same_tier >= 2
 
 func equip_weapon(w: Dictionary) -> void:
     if String(w.get("kind", "")) != "weapon":

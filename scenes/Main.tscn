@@ -60,8 +60,7 @@ anchor_bottom = 1.0
 visible = false
 layout_mode = 2
 theme_override_font_sizes/font_size = 36
-text = "GAME OVER
-Press F5 in editor to run again"
+text = "Shop - Currency: 0"
 horizontal_alignment = 1
 vertical_alignment = 1
 
@@ -150,7 +149,7 @@ offset_bottom = 220.0
 [node name="Title" type="Label" parent="UI/ShopPanel/VBox"]
 layout_mode = 2
 theme_override_font_sizes/font_size = 24
-text = "Shop — Currency: 0"
+text = "Shop - Currency: 0"
 horizontal_alignment = 1
 
 [node name="Options" type="HBoxContainer" parent="UI/ShopPanel/VBox"]
@@ -238,27 +237,27 @@ text = "Weapons"
 
 [node name="Slot1" type="Label" parent="UI/WeaponsPanel/VBox"]
 layout_mode = 2
-text = "1: —"
+text = "1: --"
 
 [node name="Slot2" type="Label" parent="UI/WeaponsPanel/VBox"]
 layout_mode = 2
-text = "2: —"
+text = "2: --"
 
 [node name="Slot3" type="Label" parent="UI/WeaponsPanel/VBox"]
 layout_mode = 2
-text = "3: —"
+text = "3: --"
 
 [node name="Slot4" type="Label" parent="UI/WeaponsPanel/VBox"]
 layout_mode = 2
-text = "4: —"
+text = "4: --"
 
 [node name="Slot5" type="Label" parent="UI/WeaponsPanel/VBox"]
 layout_mode = 2
-text = "5: —"
+text = "5: --"
 
 [node name="Slot6" type="Label" parent="UI/WeaponsPanel/VBox"]
 layout_mode = 2
-text = "6: —"
+text = "6: --"
 
 [node name="CharacterSelect" type="Panel" parent="UI"]
 process_mode = 2

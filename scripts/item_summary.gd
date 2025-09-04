@@ -65,9 +65,14 @@ func _refresh() -> void:
 		var pending := int(main.get("pending_turrets")) if main.has_method("get") else 0
 		if c > 0 or pending > 0:
 			var eff := "Queued: %d next wave" % pending
-			lines.append("%s — %s" % [id_to_name.get("turret","Turret") + (" x%d" % c if c>0 else ""), eff])
+			var base_name := String(id_to_name.get("turret","Turret"))
+			var left := base_name
+			if c > 0:
+				left += " x%d" % c
+			lines.append("%s — %s" % [left, eff])
 
 	if lines.size() == 0:
 		text.text = "No items yet. Buy items in the shop to stack effects."
 	else:
 		text.text = "[b]Items & Effects[/b]\n" + "\n".join(lines)
+
