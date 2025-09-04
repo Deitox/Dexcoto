@@ -47,6 +47,13 @@ static func all() -> Array[Dictionary]:
         {"id":"proj_1","name":"+1 Projectile","rarity":"Uncommon","type":"projectiles","value":1},
         {"id":"proj_2","name":"+2 Projectiles","rarity":"Rare","type":"projectiles","value":2},
         {"id":"proj_3","name":"+3 Projectiles","rarity":"Epic","type":"projectiles","value":3},
+        # Additional buffs for variety
+        {"id":"as_8","name":"Attack Speed +8%","rarity":"Common","type":"attack_speed","value":0.08},
+        {"id":"dmg_15","name":"Damage +15%","rarity":"Uncommon","type":"damage","value":0.15},
+        {"id":"ms_30","name":"Move Speed +30%","rarity":"Legendary","type":"move_speed","value":0.30},
+        {"id":"hp_60","name":"Max HP +60","rarity":"Legendary","type":"max_hp","value":60},
+        {"id":"bs_50","name":"Projectile Speed +50%","rarity":"Legendary","type":"bullet_speed","value":0.50},
+        {"id":"reg_3_0","name":"Regen +3.0/s","rarity":"Legendary","type":"regen","value":3.0},
     ]
 
 static func weighted_choices(count: int, exclude_ids: Array[String] = []) -> Array[Dictionary]:

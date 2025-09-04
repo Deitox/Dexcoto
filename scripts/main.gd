@@ -676,6 +676,47 @@ func _on_shop_buy(index: int) -> void:
 					if player:
 						player.lifesteal_per_kill += 1
 						player.add_item("lifesteal_charm")
+				"boots":
+					if player:
+						player.move_speed *= 1.10
+						player.add_item("boots")
+				"caffeine":
+					if player:
+						player.attack_speed_mult *= 1.10
+						player.add_item("caffeine")
+				"ammo_belt":
+					if player:
+						player.projectiles_per_shot += 1
+						player.add_item("ammo_belt")
+				"aerodynamics":
+					if player:
+						player.projectile_speed_mult *= 1.20
+						player.add_item("aerodynamics")
+				"protein_bar":
+					if player:
+						player.max_health += 15
+						player.health = min(player.max_health, player.health + 15)
+						player.add_item("protein_bar")
+				"medkit":
+					if player:
+						player.regen_per_second += 1.0
+						player.add_item("medkit")
+				"greed_token":
+					if player:
+						player.currency_gain_mult *= 1.15
+						player.add_item("greed_token")
+				"vampiric_orb":
+					if player:
+						player.lifesteal_per_kill += 1
+						player.add_item("vampiric_orb")
+				"power_core":
+					if player:
+						player.damage_mult *= 1.10
+						player.add_item("power_core")
+				"stabilizer":
+					if player:
+						player.spread_degrees = max(0.0, player.spread_degrees - 2.0)
+						player.add_item("stabilizer")
 				_:
 					pass
 		_:
