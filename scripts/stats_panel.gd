@@ -18,15 +18,25 @@ func refresh() -> void:
 		return
 	var bullet_pool = get_tree().get_first_node_in_group("bullet_pool")
 
+	# Core multipliers and caps
 	var dmg_mult: float = float(player.get("damage_mult"))
 	var atk_mult: float = float(player.get("attack_speed_mult"))
-	var atk_cap: float = float(player.MAX_ATTACK_SPEED_MULT) if player.has_method("get") or true else 4.0
+	var atk_cap: float = float(player.MAX_ATTACK_SPEED_MULT)
 	var proj_bonus: int = int(player.get("projectiles_per_shot"))
 	var proj_cap: int = int(player.MAX_PROJECTILE_BONUS)
 	var proj_speed_mult: float = float(player.get("projectile_speed_mult"))
 	var per_shot_cap: int = int(player.MAX_TOTAL_PROJECTILES)
 	var min_interval: float = float(player.MIN_WEAPON_INTERVAL)
 	var soft_proj_cap: int = 200
+
+	# Additional player attributes
+	var hp: int = int(player.get("health"))
+	var hp_max: int = int(player.get("max_health"))
+	var regen: float = float(player.get("regen_per_second"))
+	var move_spd: float = float(player.get("move_speed"))
+	var spread_deg: float = float(player.get("spread_degrees"))
+	var currency_mult: float = float(player.get("currency_gain_mult"))
+	var lifesteal: int = int(player.get("lifesteal_per_kill"))
 	var beam_threshold: float = 900.0
 	if bullet_pool and bullet_pool.has_method("get_beam_threshold"):
 		beam_threshold = float(bullet_pool.call("get_beam_threshold"))
@@ -36,6 +46,8 @@ func refresh() -> void:
 
 	var lines: Array[String] = []
 	lines.append("[b]Player Stats[/b]")
+	lines.append("Health: %d/%d  |  Regen: %.1f/s" % [hp, hp_max, regen])
+	lines.append("Move Speed: %.0f px/s" % move_spd)
 	lines.append("Damage: x%.2f" % dmg_mult)
 	var as_line := "Attack Speed: x%.2f (cap x%.2f)" % [atk_mult, atk_cap]
 	if as_overflow_mult > 1.0:
@@ -51,6 +63,9 @@ func refresh() -> void:
 	lines.append("Per-shot projectile cap: %d  |  Overflow scales damage x(shots/cap)" % per_shot_cap)
 	lines.append("Soft projectile count cap: %d  |  Overload reduces shots, boosts damage" % soft_proj_cap)
 	lines.append("Min weapon interval: %.2fs" % min_interval)
+	lines.append("Currency Gain: x%.2f" % currency_mult)
+	lines.append("Lifesteal: +%d HP per kill" % lifesteal)
+	lines.append("Spread: %.1f°" % spread_deg)
 
 	text.bbcode_enabled = true
 	text.text = "\n".join(lines)
