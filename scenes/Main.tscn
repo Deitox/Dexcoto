@@ -60,7 +60,8 @@ anchor_bottom = 1.0
 visible = false
 layout_mode = 2
 theme_override_font_sizes/font_size = 36
-text = "Shop - Currency: 0"
+text = "GAME OVER
+Press F5 in editor to run again"
 horizontal_alignment = 1
 vertical_alignment = 1
 

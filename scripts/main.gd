@@ -61,6 +61,12 @@ var _hud_highlight: Dictionary = {}
 const SOFT_CAP_ENEMIES: int = 40
 const MAX_ENEMIES: int = 60
 
+# Spawn grouping and telegraphing
+const GROUP_BASE_DELAY: float = 0.6
+const GROUP_STAGGER: float = 0.12
+const GROUP_GAP_MIN: float = 1.6
+const GROUP_GAP_MAX: float = 3.2
+
 var wave: int = 1
 var score: int = 0
 var wave_time: float = 20.0
@@ -179,7 +185,7 @@ func _on_pause_quit() -> void:
 
 func _on_spawn_timer_timeout() -> void:
 	_adjust_spawning()
-	_spawn_enemies()
+	_spawn_enemies_grouped()
 
 func _on_wave_timer_timeout() -> void:
 	begin_intermission()
@@ -226,6 +232,58 @@ func _spawn_enemies() -> void:
 			if e.has_method("set_tier"):
 				e.set_tier(tier)
 			add_child(e)
+
+func _spawn_enemies_grouped() -> void:
+	# Compute baseline like _spawn_enemies(), but spawn a smaller group with telegraphs and stagger.
+	var base_count := 2 + int(round(float(wave) * 1.5))
+	var enemies := _active_enemies_count()
+	var soft_cap := SOFT_CAP_ENEMIES
+	var count := base_count
+	var tier := 1 + int(floor(max(0.0, float(wave - 1)) / 3.0))
+	if enemies > soft_cap:
+		var over := enemies - soft_cap
+		count = max(1, int(round(float(base_count) * 0.4)))
+		tier += min(3, int(floor(float(over) / 20.0)) + 1)
+	var allowed: int = max(0, MAX_ENEMIES - enemies)
+	count = min(count, allowed)
+	if count <= 0:
+		# Back off next group
+		spawn_timer.wait_time = min(3.5, spawn_timer.wait_time * 1.2)
+		return
+	# Choose a group size and positions
+	var gmin := 2
+	var gmax := 5
+	var gsize: int = int(clamp(randi() % (gmax - gmin + 1) + gmin, 1, max(1, count)))
+	var positions: Array = []
+	for i in range(gsize):
+		positions.append(_random_spawn_position())
+	# Spawn telegraphed group if pool supports it
+	if enemy_pool and enemy_pool.has_method("spawn_enemy_group"):
+		enemy_pool.call("spawn_enemy_group", positions, tier, player, GROUP_BASE_DELAY, GROUP_STAGGER)
+	else:
+		# Fallback: schedule individual spawns with telegraph via timers
+		for i in range(gsize):
+			var pos: Vector2 = positions[i]
+			if enemy_pool and enemy_pool.has_method("spawn_enemy_telegraphed"):
+				enemy_pool.call("spawn_enemy_telegraphed", pos, tier, player, GROUP_BASE_DELAY + float(i) * GROUP_STAGGER)
+			else:
+				# Last resort: immediate spawn
+				if enemy_pool and enemy_pool.has_method("spawn_enemy"):
+					enemy_pool.call("spawn_enemy", pos, tier, player)
+				else:
+					var e := enemy_scene.instantiate()
+					e.global_position = pos
+					e.target = player
+					if e.has_method("set_tier"):
+						e.set_tier(tier)
+					add_child(e)
+	# Randomize next group gap, adapt by load
+	var gap := randf_range(GROUP_GAP_MIN, GROUP_GAP_MAX)
+	if enemies > soft_cap:
+		gap = min(GROUP_GAP_MAX + 0.8, gap * 1.25)
+	else:
+		gap = max(GROUP_GAP_MIN * 0.6, gap * 0.9)
+	spawn_timer.wait_time = gap
 
 func _adjust_spawning() -> void:
 	var enemies := _active_enemies_count()
@@ -422,10 +480,10 @@ func _show_shop() -> void:
 		if sold:
 			label = "%s\n[SOLD OUT]" % o["name"]
 		elif locked:
-			label = "🔒 %s" % label
+			label = "[LOCKED] %s" % label
 		btns[i].text = label
-		if locked and not sold:
-			btns[i].text = "[LOCKED] " + btns[i].text
+
+
 		btns[i].disabled = sold
 		# Color: items by rarity; weapons by tier if >1 otherwise rarity
 		var rarity: String = String(o.get("rarity", "Common"))
