@@ -114,14 +114,14 @@ size_flags_vertical = 3
 text = "Option 3"
 
 [node name="Summary" type="Control" parent="UI/UpgradePanel/VBox"]
-custom_minimum_size = Vector2(560, 120)
+custom_minimum_size = Vector2(560, 260)
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 script = ExtResource("11")
 
 [node name="RichText" type="RichTextLabel" parent="UI/UpgradePanel/VBox/Summary"]
-custom_minimum_size = Vector2(560, 120)
+custom_minimum_size = Vector2(560, 260)
 layout_mode = 2
 size_flags_horizontal = 3
 bbcode_enabled = true
@@ -189,14 +189,14 @@ layout_mode = 2
 text = "Start Next Wave"
 
 [node name="Summary" type="Control" parent="UI/ShopPanel/VBox"]
-custom_minimum_size = Vector2(560, 120)
+custom_minimum_size = Vector2(560, 260)
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 script = ExtResource("11")
 
 [node name="RichText" type="RichTextLabel" parent="UI/ShopPanel/VBox/Summary"]
-custom_minimum_size = Vector2(560, 120)
+custom_minimum_size = Vector2(560, 260)
 layout_mode = 2
 size_flags_horizontal = 3
 bbcode_enabled = true
@@ -262,10 +262,11 @@ layout_mode = 2
 text = "6: --"
 
 [node name="StatsPanel" type="Panel" parent="UI"]
+visible = false
 offset_left = 1640.0
 offset_top = 72.0
-offset_right = 1884.0
-offset_bottom = 420.0
+offset_right = 1904.0
+offset_bottom = 1000.0
 
 [node name="VBox" type="VBoxContainer" parent="UI/StatsPanel"]
 layout_mode = 2
@@ -279,14 +280,14 @@ layout_mode = 2
 text = "Stats"
 
 [node name="Stats" type="Control" parent="UI/StatsPanel/VBox"]
-custom_minimum_size = Vector2(240, 280)
+custom_minimum_size = Vector2(240, 700)
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 script = ExtResource("12")
 
 [node name="RichText" type="RichTextLabel" parent="UI/StatsPanel/VBox/Stats"]
-custom_minimum_size = Vector2(240, 280)
+custom_minimum_size = Vector2(240, 700)
 layout_mode = 2
 size_flags_horizontal = 3
 bbcode_enabled = true
@@ -361,14 +362,14 @@ layout_mode = 2
 text = "Quit"
 
 [node name="Summary" type="Control" parent="UI/PausePanel/VBox"]
-custom_minimum_size = Vector2(560, 120)
+custom_minimum_size = Vector2(560, 260)
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 script = ExtResource("11")
 
 [node name="RichText" type="RichTextLabel" parent="UI/PausePanel/VBox/Summary"]
-custom_minimum_size = Vector2(560, 120)
+custom_minimum_size = Vector2(560, 260)
 layout_mode = 2
 size_flags_horizontal = 3
 bbcode_enabled = true

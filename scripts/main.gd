@@ -13,6 +13,19 @@ func _refresh_item_summaries() -> void:
 			if n and n.has_method("refresh"):
 				n.call("refresh")
 
+func _update_stats_panel_visibility() -> void:
+	var sp := $UI/StatsPanel if has_node("UI/StatsPanel") else null
+	if sp == null:
+		return
+	var show_stats := false
+	if in_intermission:
+		show_stats = true
+	elif pause_panel and pause_panel.visible:
+		show_stats = true
+	else:
+		show_stats = false
+	sp.visible = show_stats
+
 @export var enemy_scene: PackedScene = preload("res://scenes/Enemy.tscn")
 
 @onready var player: Node2D = $Player
@@ -123,6 +136,7 @@ func _ready() -> void:
 	_show_character_select()
 	_update_ui()
 	_center_player_in_arena()
+	_update_stats_panel_visibility()
 
 	# Connect weapon events to update HUD and notify merges
 	if player:
@@ -169,13 +183,16 @@ func _toggle_pause() -> void:
 	if now_paused:
 		get_tree().paused = false
 		pause_panel.visible = false
+		_update_stats_panel_visibility()
 	else:
 		pause_panel.visible = true
 		get_tree().paused = true
+		_update_stats_panel_visibility()
 
 func _on_pause_resume() -> void:
 	get_tree().paused = false
 	pause_panel.visible = false
+	_update_stats_panel_visibility()
 
 func _on_pause_restart() -> void:
 	get_tree().paused = false
@@ -397,6 +414,7 @@ func begin_intermission() -> void:
 	spawn_timer.stop()
 	pending_choices = levels_gained_this_wave
 	get_tree().paused = true
+	_update_stats_panel_visibility()
 	if pending_choices > 0:
 		_show_upgrade_choices()
 	else:
@@ -431,6 +449,7 @@ func _show_upgrade_choices() -> void:
 	btn3.add_theme_color_override("font_pressed_color", c3)
 	btn3.add_theme_color_override("font_focus_color", c3)
 	_refresh_item_summaries()
+	_update_stats_panel_visibility()
 
 func _on_option_pressed(index: int) -> void:
 	if index >= 0 and index < current_choices.size():
@@ -451,6 +470,7 @@ func open_shop() -> void:
 	_generate_shop_offers()
 	_show_shop()
 	_refresh_item_summaries()
+	_update_stats_panel_visibility()
 
 func _generate_shop_offers() -> void:
 	# Generate a new set, but preserve any locked, unsold items in their slots.
@@ -693,6 +713,7 @@ func _on_shop_start() -> void:
 	levels_gained_this_wave = 0
 	_clear_hud_highlights()
 	_start_next_wave()
+	_update_stats_panel_visibility()
 
 func _on_weapon_added(index: int) -> void:
 	# Yellow outline for new items
