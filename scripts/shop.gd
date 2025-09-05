@@ -60,6 +60,19 @@ static func weapons() -> Array[Dictionary]:
 		 "desc":"Void element. Applies Vulnerable debuff.",
 		 "fire_interval":0.55, "damage":16, "speed":600, "projectiles":1, "color": Color(0.8,0.5,1.0),
 		 "element":"void", "element_proc":0.30, "vuln":0.20, "vuln_duration":2.5},
+		# Explosive weapons
+		{"kind":"weapon","id":"grenade_launcher","name":"Grenade Launcher","cost":18,"rarity":"Rare",
+		 "desc":"Explosive rounds. AoE on hit.",
+		 "fire_interval":0.60, "damage":18, "speed":480, "projectiles":1, "color": Color(1.0,0.8,0.5),
+		 "explosive": true, "expl_radius": 120.0, "expl_factor": 0.9},
+		{"kind":"weapon","id":"rocket_launcher","name":"Rocket Launcher","cost":22,"rarity":"Epic",
+		 "desc":"High damage explosive rockets.",
+		 "fire_interval":0.85, "damage":26, "speed":520, "projectiles":1, "color": Color(1.0,0.9,0.6),
+		 "explosive": true, "expl_radius": 160.0, "expl_factor": 1.0},
+		{"kind":"weapon","id":"cluster_bomb","name":"Cluster Bomb","cost":24,"rarity":"Legendary",
+		 "desc":"Explodes in a large radius.",
+		 "fire_interval":0.95, "damage":22, "speed":460, "projectiles":1, "color": Color(1.0,0.85,0.6),
+		 "explosive": true, "expl_radius": 200.0, "expl_factor": 0.8},
 	]
 
 static func items() -> Array[Dictionary]:
@@ -106,6 +119,15 @@ static func items() -> Array[Dictionary]:
 		 "desc":"+30% Elemental Power."},
 		{"kind":"item","id":"arcanum","name":"Arcanum","cost":26,"rarity":"Legendary",
 		 "desc":"+40% Elemental Power."},
+		# Cross-synergy items
+		{"kind":"item","id":"volatile_rounds","name":"Volatile Rounds","cost":16,"rarity":"Rare",
+		 "desc":"Non-explosive hits have a chance to explode."},
+		{"kind":"item","id":"elemental_fuse","name":"Elemental Fuse","cost":18,"rarity":"Rare",
+		 "desc":"Non-elemental hits may inflict a random element."},
+		{"kind":"item","id":"payload_catalyst","name":"Payload Catalyst","cost":20,"rarity":"Epic",
+		 "desc":"Explosions may apply a random elemental effect in the blast."},
+		{"kind":"item","id":"superconductor","name":"Superconductor","cost":22,"rarity":"Epic",
+		 "desc":"Shock effects arc to more targets and reach farther."},
 	]
 
 static func generate_offers(count: int, wave: int = 1) -> Array[Dictionary]:

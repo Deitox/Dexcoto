@@ -24,6 +24,7 @@ var lifesteal_per_kill: int = 0
 
 # Elemental scaling (affects elemental weapons only)
 var elemental_damage_mult: float = 1.0
+var explosive_power_mult: float = 1.0
 
 # Item ownership counts (by item id)
 var item_counts: Dictionary = {}
@@ -157,6 +158,21 @@ func _fire_weapon_at(w: Dictionary, pos: Vector2) -> void:
 		for k in keys:
 			if w.has(k):
 				effect[k] = w[k]
+		# Superconductor synergy boosts Shock arcs
+		if elem == "shock" and has_method("get_item_count"):
+			var sc: int = int(get_item_count("superconductor"))
+			if sc > 0:
+				effect["arc_count"] = int(effect.get("arc_count", 2)) + sc
+				effect["arc_radius"] = float(effect.get("arc_radius", 140.0)) + 12.0 * float(sc)
+	# Explosive packaging (AoE on hit)
+	if bool(w.get("explosive", false)):
+		if effect.size() == 0:
+			effect = {}
+		effect["explosive"] = true
+		var base_r: float = float(w.get("expl_radius", 120.0))
+		effect["radius"] = base_r * max(0.1, explosive_power_mult)
+		effect["expl_factor"] = float(w.get("expl_factor", 0.9)) * max(0.5, explosive_power_mult)
+		effect["color"] = color
 	# Cap total projectiles and convert overflow into proportional damage
 	if shots > MAX_TOTAL_PROJECTILES:
 		var scale_up: float = float(shots) / float(MAX_TOTAL_PROJECTILES)
@@ -245,6 +261,8 @@ func apply_upgrade(upg: Dictionary) -> void:
 					overflow_damage_mult_from_projectiles *= 1.1
 		"elemental_power":
 			elemental_damage_mult *= (1.0 + float(v))
+		"explosive_power":
+			explosive_power_mult *= (1.0 + float(v))
 		_:
 			pass
 
@@ -289,6 +307,13 @@ func equip_weapon(w: Dictionary) -> void:
 	for k in opt_keys:
 		if w.has(k):
 			inst[k] = w[k]
+	# Copy explosive fields if present
+	if bool(w.get("explosive", false)):
+		inst["explosive"] = true
+		if w.has("expl_radius"):
+			inst["expl_radius"] = w["expl_radius"]
+		if w.has("expl_factor"):
+			inst["expl_factor"] = w["expl_factor"]
 	# Apply tier scaling if starting above tier 1
 	if start_tier > 1:
 		for t in range(2, start_tier + 1):

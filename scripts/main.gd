@@ -717,6 +717,34 @@ func _on_shop_buy(index: int) -> void:
 					if player:
 						player.spread_degrees = max(0.0, player.spread_degrees - 2.0)
 						player.add_item("stabilizer")
+				"volatile_rounds":
+					if player:
+						player.add_item("volatile_rounds")
+				"elemental_fuse":
+					if player:
+						player.add_item("elemental_fuse")
+				"payload_catalyst":
+					if player:
+						player.add_item("payload_catalyst")
+				"superconductor":
+					if player:
+						player.add_item("superconductor")
+				"blast_caps":
+					if player:
+						player.explosive_power_mult *= 1.10
+						player.add_item("blast_caps")
+				"demolition_kit":
+					if player:
+						player.explosive_power_mult *= 1.15
+						player.add_item("demolition_kit")
+				"payload_upgrade":
+					if player:
+						player.explosive_power_mult *= 1.20
+						player.add_item("payload_upgrade")
+				"warhead":
+					if player:
+						player.explosive_power_mult *= 1.30
+						player.add_item("warhead")
 				"elemental_amp":
 					if player:
 						player.elemental_damage_mult *= 1.10
