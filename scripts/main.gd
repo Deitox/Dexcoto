@@ -440,9 +440,9 @@ func _show_upgrade_choices() -> void:
 	var r1: String = String(current_choices[0].get("rarity", "Common"))
 	var r2: String = String(current_choices[1].get("rarity", "Common"))
 	var r3: String = String(current_choices[2].get("rarity", "Common"))
-	var c1 := _color_for_rarity(r1)
-	var c2 := _color_for_rarity(r2)
-	var c3 := _color_for_rarity(r3)
+	var c1 := ShopLib.rarity_color(r1)
+	var c2 := ShopLib.rarity_color(r2)
+	var c3 := ShopLib.rarity_color(r3)
 	btn1.add_theme_color_override("font_color", c1)
 	btn1.add_theme_color_override("font_hover_color", c1)
 	btn1.add_theme_color_override("font_pressed_color", c1)
@@ -515,7 +515,7 @@ func _show_shop() -> void:
 		btns[i].disabled = sold
 		# Color: items by rarity; weapons by tier if >1 otherwise rarity
 		var rarity: String = String(o.get("rarity", "Common"))
-		var rcol: Color = _color_for_rarity(rarity)
+		var rcol: Color = ShopLib.rarity_color(rarity)
 		if String(o.get("kind","")) == "weapon":
 			var wtier: int = int(o.get("tier", 1))
 			# Always color weapons by tier for consistency with inventory
@@ -608,20 +608,7 @@ func _optimize_runtime() -> void:
 	# Current adaptive logic handled in spawn adjustment and projectile/turret scaling.
 	pass
 
-func _color_for_rarity(r: String) -> Color:
-	match r:
-		"Common":
-			return Color(0.85, 0.85, 0.85)
-		"Uncommon":
-			return Color(0.4, 1.0, 0.4)
-		"Rare":
-			return Color(0.4, 0.6, 1.0)
-		"Epic":
-			return Color(0.8, 0.4, 1.0)
-		"Legendary":
-			return Color(1.0, 0.7, 0.2)
-		_:
-			return Color(1, 1, 1)
+## Rarity color now centralized in ShopLib.rarity_color
 
 func _color_for_tier(t: int) -> Color:
 	if t <= 1:

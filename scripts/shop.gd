@@ -1,8 +1,9 @@
 class_name ShopDB
 extends Node
 
-static func weapons() -> Array[Dictionary]:
-	return [
+# Central catalogs to avoid reconstructing arrays on each call.
+# Note: These are treated as read-only. Callers should not mutate entries.
+const WEAPONS: Array[Dictionary] = [
 		{"kind":"weapon","id":"pistol","name":"Pistol","cost":8,"rarity":"Common",
 		 "desc":"Balanced sidearm.",
 		 "fire_interval":0.35, "damage":10, "speed":500, "projectiles":1, "color": Color(1,1,0.2)},
@@ -75,8 +76,7 @@ static func weapons() -> Array[Dictionary]:
 		 "explosive": true, "expl_radius": 200.0, "expl_factor": 0.8},
 	]
 
-static func items() -> Array[Dictionary]:
-	return [
+const ITEMS: Array[Dictionary] = [
 		{"kind":"item","id":"money_charm","name":"Money Charm","cost":12,"rarity":"Uncommon",
 		 "desc":"Earn 20% more currency."},
 		{"kind":"item","id":"turret","name":"Turret","cost":18,"rarity":"Rare",
@@ -130,18 +130,47 @@ static func items() -> Array[Dictionary]:
 		 "desc":"Shock effects arc to more targets and reach farther."},
 	]
 
+static func weapons() -> Array[Dictionary]:
+	# Return the shared catalog. Callers should not mutate entries.
+	# If mutation is needed, call .duplicate(true) on entries.
+	return WEAPONS
+
+static func items() -> Array[Dictionary]:
+	# Return the shared catalog. Callers should not mutate entries.
+	return ITEMS
+
+static func rarity_color(r: String) -> Color:
+	match r:
+		"Common":
+			return Color(0.85, 0.85, 0.85)
+		"Uncommon":
+			return Color(0.4, 1.0, 0.4)
+		"Rare":
+			return Color(0.4, 0.6, 1.0)
+		"Epic":
+			return Color(0.8, 0.4, 1.0)
+		"Legendary":
+			return Color(1.0, 0.7, 0.2)
+		_:
+			return Color(1, 1, 1)
+
+static func rarity_color_hex(r: String) -> String:
+	# Returns hex without leading '#'
+	return rarity_color(r).to_html(false)
+
 static func generate_offers(count: int, wave: int = 1) -> Array[Dictionary]:
 	var pool: Array[Dictionary] = []
 	pool.append_array(weapons())
 	pool.append_array(items())
 	var offers: Array[Dictionary] = []
-	for i in range(count):
-		if pool.is_empty():
-			break
-		var idx := randi() % pool.size()
-		var base: Dictionary = pool[idx]
-		pool.remove_at(idx)
-		var offer: Dictionary = base.duplicate(true)
+	if pool.is_empty() or count <= 0:
+		return offers
+	# Cheaper sampling: shuffle once and take the first N
+	pool.shuffle()
+	var take: int = min(count, pool.size())
+	for i in range(take):
+		var base: Dictionary = pool[i]
+		var offer: Dictionary = (base.duplicate(true) as Dictionary)
 		# Chance to roll higher tier for weapons increases with wave
 		if String(offer.get("kind","")) == "weapon":
 			var t: int = _roll_weapon_tier(wave)
@@ -175,4 +204,3 @@ static func _roll_weapon_tier(wave: int) -> int:
 	if r < p2:
 		return 2
 	return 1
-

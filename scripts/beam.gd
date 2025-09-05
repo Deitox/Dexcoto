@@ -26,11 +26,15 @@ func activate(pos: Vector2, dir: Vector2, dmg: int, col: Color, effect: Dictiona
 		line.default_color = color
 	var beam_len: float = max_length if length <= 0.0 else length
 	# Raycast to first collider to place beam end and apply damage.
+	# Start slightly ahead to avoid originating inside the shooter/collider.
 	var space: PhysicsDirectSpaceState2D = get_world_2d().direct_space_state
-	var to: Vector2 = pos + dir.normalized() * beam_len
-	var query := PhysicsRayQueryParameters2D.create(pos, to)
+	var ndir: Vector2 = dir.normalized()
+	var from: Vector2 = pos + ndir * 8.0
+	var to: Vector2 = from + ndir * beam_len
+	var query := PhysicsRayQueryParameters2D.create(from, to)
 	query.collide_with_areas = true
 	query.collide_with_bodies = true
+	query.hit_from_inside = false
 	var hit := space.intersect_ray(query)
 	var end_point: Vector2 = to
 	if hit and hit.has("position"):
@@ -40,7 +44,7 @@ func activate(pos: Vector2, dir: Vector2, dmg: int, col: Color, effect: Dictiona
 			collider.take_damage(_damage)
 			if _effect is Dictionary and _effect.size() > 0 and collider.has_method("apply_elemental_effect"):
 				collider.apply_elemental_effect(_effect, _damage, end_point)
-	_set_line(Vector2.ZERO, (end_point - pos))
+	_set_line(Vector2.ZERO, (end_point - global_position))
 	_time = 0.0
 	_active = true
 	visible = true

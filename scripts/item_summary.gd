@@ -4,19 +4,11 @@ extends Control
 
 const ShopLib = preload("res://scripts/shop.gd")
 
-func _rarity_color_hex(r: String) -> String:
-	match r:
-		"Common": return "#D9D9D9"
-		"Uncommon": return "#66FF66"
-		"Rare": return "#6699FF"
-		"Epic": return "#CC66FF"
-		"Legendary": return "#FFB233"
-		_: return "#FFFFFF"
-
 func _fmt_line(item_id: String, raw: String, id_to_rarity: Dictionary) -> String:
 	var rar := String(id_to_rarity.get(item_id, "Common"))
-	var col := _rarity_color_hex(rar)
-	return "[color=%s]%s[/color]" % [col, raw]
+	var hex := ShopLib.rarity_color_hex(rar)
+	# rarity_color_hex returns without '#'
+	return "[color=#%s]%s[/color]" % [hex, raw]
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_WHEN_PAUSED

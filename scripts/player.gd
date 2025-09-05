@@ -57,6 +57,8 @@ const MIN_WEAPON_INTERVAL: float = 0.08
 func _ready() -> void:
 	health = max_health
 	bullet_pool = get_tree().get_first_node_in_group("bullet_pool")
+	# Ensure we pick up the pool if its _ready adds the group after ours runs
+	call_deferred("_ensure_bullet_pool")
 	_last_pos = global_position
 
 func set_position_and_reset_guard(pos: Vector2) -> void:
@@ -186,6 +188,7 @@ func _fire_weapon_at(w: Dictionary, pos: Vector2) -> void:
 		shots = max(1, int(round(float(shots) * scale_factor)))
 		dmg = int(round(float(dmg) * (1.0 / scale_factor)))
 	if shots == 1:
+		_ensure_bullet_pool()
 		if bullet_pool and bullet_pool.has_method("spawn_bullet"):
 			bullet_pool.call("spawn_bullet", global_position + dir * 16.0, dir, spd, dmg, color, 2.0, effect)
 		else:
@@ -208,6 +211,7 @@ func _fire_weapon_at(w: Dictionary, pos: Vector2) -> void:
 		for i in range(shots):
 			var angle: float = start_angle + step * i
 			var d: Vector2 = dir.rotated(angle)
+			_ensure_bullet_pool()
 			if bullet_pool and bullet_pool.has_method("spawn_bullet"):
 				bullet_pool.call("spawn_bullet", global_position + d * 16.0, d, spd, dmg, color, 2.0, effect)
 			else:
@@ -405,3 +409,9 @@ func _try_merge_weapon(id: String) -> Dictionary:
 		"index": final_index,
 		"new_tier": final_tier,
 	}
+
+func _ensure_bullet_pool() -> void:
+	if bullet_pool == null or not is_instance_valid(bullet_pool):
+		var p = get_tree().get_first_node_in_group("bullet_pool")
+		if p != null:
+			bullet_pool = p

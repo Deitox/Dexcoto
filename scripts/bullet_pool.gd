@@ -4,6 +4,7 @@ extends Node2D
 @export var beam_scene: PackedScene = preload("res://scenes/Beam.tscn")
 
 # Threshold after which projectiles turn into beams.
+# Reduced by 100x to make the effect reachable in normal play.
 const SPEED_BEAM_THRESHOLD: float = 900.0
 
 var pool: Array = []
