@@ -1,12 +1,20 @@
 extends Control
 
-@onready var text: RichTextLabel = $RichText
+@onready var _rich: RichTextLabel = $RichText if has_node("RichText") else null
+var _host: VBoxContainer = null
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_WHEN_PAUSED
 	if has_signal("visibility_changed"):
 		visibility_changed.connect(_on_visibility_changed)
-	refresh()
+	# Also listen for parent (StatsPanel) visibility changes
+	var p := get_parent()
+	if p and p.has_signal("visibility_changed"):
+		p.visibility_changed.connect(_on_visibility_changed)
+	_ensure_host()
+	set_process(true)
+	# Defer initial refresh to allow Player to enter groups in Main._ready
+	call_deferred("refresh")
 
 func _on_visibility_changed() -> void:
 	if visible:
@@ -17,7 +25,8 @@ static func _pct(v: float) -> String:
 	return "%+d%%" % int(round((v - 1.0) * 100.0))
 
 static func _deg(v: float) -> String:
-	return "%.1f°" % v
+	var deg := char(0x00B0)
+	return "%.1f%s" % [v, deg]
 
 # Tier color helpers for headers (matches main.gd palette)
 static func _tier_hex(t: int) -> String:
@@ -39,8 +48,14 @@ static func _tier_hex(t: int) -> String:
 func refresh() -> void:
 	var player = get_tree().get_first_node_in_group("player")
 	if player == null:
+		player = _find_player_fallback()
+	if player == null:
+		_clear_host()
 		return
 	var bullet_pool = get_tree().get_first_node_in_group("bullet_pool")
+	if _rich:
+		_rich.visible = false
+	_ensure_host()
 
 	# Core multipliers and caps
 	var dmg_mult: float = float(player.get("damage_mult"))
@@ -73,55 +88,153 @@ func refresh() -> void:
 	var as_overflow_mult: float = float(player.get("overflow_damage_mult_from_attack_speed")) if player.has_method("get") else 1.0
 	var proj_overflow_mult: float = float(player.get("overflow_damage_mult_from_projectiles")) if player.has_method("get") else 1.0
 
-	# Build grouped, readable lines
-	var lines: Array[String] = []
-	lines.append("[center][b]Player Stats[/b][/center]")
+	# Build grids in the static Host container
+	_clear_host()
 
 	# Core
-	lines.append("[b][color=%s]Core[/color][/b]" % _tier_hex(1))
-	lines.append("- Health: %d/%d    - Regen: %.1f/s" % [hp, hp_max, regen])
-	lines.append("- Move Speed: %.0f px/s" % move_spd)
+	_add_section_header("Core", _tier_hex(1))
+	var core := _add_grid()
+	_add_kv(core, "Health", "%d/%d" % [hp, hp_max])
+	_add_kv(core, "Regen", "%.1f/s" % regen)
+	_add_kv(core, "Move Speed", "%.0f px/s" % move_spd)
 
 	# Offense
-	lines.append("[b][color=%s]Offense[/color][/b]" % _tier_hex(3))
-	lines.append("- Damage: x%.2f (%s)" % [dmg_mult, _pct(dmg_mult)])
-	var as_color := "white"
+	_add_section_header("Offense", _tier_hex(3))
+	var off := _add_grid()
+	_add_kv(off, "Damage", "x%.2f (%s)" % [dmg_mult, _pct(dmg_mult)])
+	var as_col: Color = Color.WHITE
 	if atk_mult >= atk_cap:
-		as_color = "#ff7043" # at cap
+		as_col = Color("#ff7043")
 	elif atk_mult >= atk_cap * 0.9:
-		as_color = "#ffb74d" # near cap
-	lines.append("- [color=%s]Attack Speed: x%.2f[/color]  (cap x%.2f, min interval %.2fs)" % [as_color, atk_mult, atk_cap, min_interval])
+		as_col = Color("#ffb74d")
+	# Split long Attack Speed details into separate aligned rows to avoid clipping
+	_add_kv(off, "Attack Speed", "x%.2f" % atk_mult, as_col)
+	_add_kv(off, "Cap", "x%.2f" % atk_cap)
+	_add_kv(off, "Min Interval", "%.2fs" % min_interval)
 	if as_overflow_mult > 1.0:
-		lines.append("  * [color=#66bb6a]Overflow -> Damage: %s[/color]" % _pct(as_overflow_mult))
-	lines.append("- Spread: %s" % _deg(spread_deg))
+		_add_kv(off, "Overflow to Damage", _pct(as_overflow_mult), Color("#66bb6a"))
+	_add_kv(off, "Spread", _deg(spread_deg))
 
 	# Projectiles
-	lines.append("[b][color=%s]Projectiles[/color][/b]" % _tier_hex(2))
-	var proj_color := "#ff7043" if proj_bonus >= proj_cap else "white"
-	lines.append("- [color=%s]Bonus Projectiles: +%d[/color]  (cap +%d)" % [proj_color, proj_bonus, proj_cap])
+	_add_section_header("Projectiles", _tier_hex(2))
+	var proj := _add_grid()
+	var proj_col: Color = Color("#ff7043") if proj_bonus >= proj_cap else Color.WHITE
+	_add_kv(proj, "Bonus Projectiles", "+%d (cap +%d)" % [proj_bonus, proj_cap], proj_col)
 	if proj_overflow_mult > 1.0:
-		lines.append("  * [color=#66bb6a]Overflow -> Damage: %s[/color]" % _pct(proj_overflow_mult))
-	lines.append("- Projectile Speed: x%.2f" % proj_speed_mult)
-	lines.append("- Per-shot cap: %d    - Global soft cap: %d" % [per_shot_cap, soft_proj_cap])
-	lines.append("- Beam threshold: %.0f px/s" % beam_threshold)
+		_add_kv(proj, "Overflow to Damage", _pct(proj_overflow_mult), Color("#66bb6a"))
+	_add_kv(proj, "Projectile Speed", "x%.2f" % proj_speed_mult)
+	_add_kv(proj, "Per-shot cap", "%d" % per_shot_cap)
+	_add_kv(proj, "Global soft cap", "%d" % soft_proj_cap)
+	_add_kv(proj, "Beam threshold", "%.0f px/s" % beam_threshold)
 
-	# Elemental / Explosive (only if modified)
+	# Powers
 	var show_elem: bool = abs(elemental_power - 1.0) > 0.001
 	var show_expl: bool = abs(explosive_power - 1.0) > 0.001
 	if show_elem or show_expl:
-		lines.append("[b][color=%s]Powers[/color][/b]" % _tier_hex(4))
+		_add_section_header("Powers", _tier_hex(4))
+		var pwr := _add_grid()
 		if show_elem:
-			lines.append("- Elemental Power: x%.2f (%s)" % [elemental_power, _pct(elemental_power)])
+			_add_kv(pwr, "Elemental Power", "x%.2f (%s)" % [elemental_power, _pct(elemental_power)])
 		if show_expl:
-			lines.append("- Explosive Power: x%.2f (%s)" % [explosive_power, _pct(explosive_power)])
+			_add_kv(pwr, "Explosive Power", "x%.2f (%s)" % [explosive_power, _pct(explosive_power)])
 
-	# Economy (only if applicable)
+	# Economy
 	if abs(currency_mult - 1.0) > 0.001 or lifesteal > 0:
-		lines.append("[b][color=%s]Economy[/color][/b]" % _tier_hex(5))
+		_add_section_header("Economy", _tier_hex(5))
+		var eco := _add_grid()
 		if abs(currency_mult - 1.0) > 0.001:
-			lines.append("- Currency Gain: x%.2f (%s)" % [currency_mult, _pct(currency_mult)])
+			_add_kv(eco, "Currency Gain", "x%.2f (%s)" % [currency_mult, _pct(currency_mult)])
 		if lifesteal > 0:
-			lines.append("- Lifesteal: +%d HP/kill" % lifesteal)
+			_add_kv(eco, "Lifesteal", "+%d HP/kill" % lifesteal)
 
-	text.bbcode_enabled = true
-	text.text = "\n".join(lines)
+func _find_player_fallback() -> Node:
+	# Try common locations if group lookup failed (e.g., order of _ready callbacks)
+	if has_node("/root/Main/Player"):
+		return get_node("/root/Main/Player")
+	# Search by name as a last resort
+	var root := get_tree().root
+	if root:
+		var found = root.find_child("Player", true, false)
+		if found:
+			return found
+	return null
+
+var _accum: float = 0.0
+const REFRESH_INTERVAL := 0.5
+
+func _process(delta: float) -> void:
+	# Light auto-refresh while visible to keep numbers current
+	if not is_visible_in_tree():
+		_accum = 0.0
+		return
+	_accum += delta
+	if _accum >= REFRESH_INTERVAL:
+		_accum = 0.0
+		refresh()
+
+# Container helpers
+func _ensure_host() -> void:
+	if _host and is_instance_valid(_host):
+		return
+	if has_node("Host"):
+		_host = get_node("Host")
+		# Add slight vertical spacing between rows
+		_host.add_theme_constant_override("separation", 6)
+		return
+	# Fallback: create dynamically if the Host node is missing
+	_host = VBoxContainer.new()
+	_host.anchor_right = 1
+	_host.anchor_bottom = 1
+	_host.offset_left = 0
+	_host.offset_top = 0
+	_host.offset_right = 0
+	_host.offset_bottom = 0
+	add_child(_host)
+
+func _clear_host() -> void:
+	if _host == null:
+		return
+	for c in _host.get_children():
+		c.queue_free()
+
+func _add_header(title: String, col: Color) -> void:
+	var l := Label.new()
+	l.text = title
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	l.add_theme_color_override("font_color", col)
+	_host.add_child(l)
+
+func _add_section_header(title: String, hex: String) -> void:
+	var l := Label.new()
+	l.text = title
+	l.add_theme_color_override("font_color", Color.from_string("#" + hex, Color.WHITE))
+	l.add_theme_font_size_override("font_size", 16)
+	_host.add_child(l)
+	# Thin separator for readability
+	var sep := HSeparator.new()
+	sep.modulate = Color(1,1,1,0.35)
+	_host.add_child(sep)
+
+func _add_grid() -> GridContainer:
+	var g := GridContainer.new()
+	g.columns = 2
+	g.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	g.add_theme_constant_override("h_separation", 10)
+	g.add_theme_constant_override("v_separation", 2)
+	_host.add_child(g)
+	return g
+
+func _add_kv(grid: GridContainer, key: String, val: String, val_color: Color = Color.WHITE) -> void:
+	var lk := Label.new()
+	lk.text = key
+	lk.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	lk.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	lk.custom_minimum_size = Vector2(140, 0)
+	var lv := Label.new()
+	lv.text = val
+	lv.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	lv.add_theme_color_override("font_color", val_color)
+	# Allow value column to expand; rely on default wrapping/clipping
+	lv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	grid.add_child(lk)
+	grid.add_child(lv)

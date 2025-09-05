@@ -45,7 +45,7 @@ func _refresh() -> void:
 	var cdict = player.get("item_counts") if player.has_method("get") else null
 	if cdict != null:
 		counts = cdict
-	var lines: Array[String] = []
+
 	var id_to_name: Dictionary = {}
 	var id_to_rarity: Dictionary = {}
 	for it in ShopLib.items():
@@ -53,69 +53,71 @@ func _refresh() -> void:
 		id_to_name[iid] = String(it["name"])
 		id_to_rarity[iid] = String(it.get("rarity", "Common"))
 
+	var entries: Array[Dictionary] = []
+
 	# Economy
 	var n := int(counts.get("money_charm", 0))
 	if n > 0:
 		var mul := pow(1.2, float(n))
-		lines.append(_fmt_line("money_charm", "%s x%d — +%d%% currency (x%.2f)" % [name_of("money_charm","Money Charm", id_to_name), n, int(round((mul-1.0)*100.0)), mul], id_to_rarity))
+		_add_entry(entries, id_to_name, id_to_rarity, "money_charm", "%s x%d - +%d%% currency (x%.2f)" % [name_of("money_charm","Money Charm", id_to_name), n, int(round((mul-1.0)*100.0)), mul])
 
 	# Core combat items
 	n = int(counts.get("scope", 0))
 	if n > 0:
-		lines.append(_fmt_line("scope", "%s x%d — +%d projectiles" % [name_of("scope","Scope", id_to_name), n, n], id_to_rarity))
+		_add_entry(entries, id_to_name, id_to_rarity, "scope", "%s x%d - +%d projectiles" % [name_of("scope","Scope", id_to_name), n, n])
 	n = int(counts.get("overcharger", 0))
 	if n > 0:
 		var mul_o := pow(1.15, float(n))
-		lines.append(_fmt_line("overcharger", "%s x%d — +%d%% attack speed (x%.2f)" % [name_of("overcharger","Overcharger", id_to_name), n, int(round((mul_o-1.0)*100.0)), mul_o], id_to_rarity))
+		_add_entry(entries, id_to_name, id_to_rarity, "overcharger", "%s x%d - +%d%% attack speed (x%.2f)" % [name_of("overcharger","Overcharger", id_to_name), n, int(round((mul_o-1.0)*100.0)), mul_o])
 	n = int(counts.get("adrenaline", 0))
 	if n > 0:
-		lines.append(_fmt_line("adrenaline", "%s x%d — +%.1f HP/s regen" % [name_of("adrenaline","Adrenaline", id_to_name), n, 0.5*float(n)], id_to_rarity))
+		_add_entry(entries, id_to_name, id_to_rarity, "adrenaline", "%s x%d - +%.1f HP/s regen" % [name_of("adrenaline","Adrenaline", id_to_name), n, 0.5*float(n)])
 	n = int(counts.get("lifesteal_charm", 0))
 	if n > 0:
-		lines.append(_fmt_line("lifesteal_charm", "%s x%d — +%d HP per kill" % [name_of("lifesteal_charm","Lifesteal Charm", id_to_name), n, n], id_to_rarity))
+		_add_entry(entries, id_to_name, id_to_rarity, "lifesteal_charm", "%s x%d - +%d HP per kill" % [name_of("lifesteal_charm","Lifesteal Charm", id_to_name), n, n])
 
 	# Movement/projectile
 	n = int(counts.get("boots", 0))
 	if n > 0:
 		var mul_b := pow(1.10, float(n))
-		lines.append(_fmt_line("boots", "%s x%d — +%d%% move speed (x%.2f)" % [name_of("boots","Boots", id_to_name), n, int(round((mul_b-1.0)*100.0)), mul_b], id_to_rarity))
+		_add_entry(entries, id_to_name, id_to_rarity, "boots", "%s x%d - +%d%% move speed (x%.2f)" % [name_of("boots","Boots", id_to_name), n, int(round((mul_b-1.0)*100.0)), mul_b])
 	n = int(counts.get("caffeine", 0))
 	if n > 0:
 		var mul_c := pow(1.10, float(n))
-		lines.append(_fmt_line("caffeine", "%s x%d — +%d%% attack speed (x%.2f)" % [name_of("caffeine","Caffeine", id_to_name), n, int(round((mul_c-1.0)*100.0)), mul_c], id_to_rarity))
+		_add_entry(entries, id_to_name, id_to_rarity, "caffeine", "%s x%d - +%d%% attack speed (x%.2f)" % [name_of("caffeine","Caffeine", id_to_name), n, int(round((mul_c-1.0)*100.0)), mul_c])
 	n = int(counts.get("ammo_belt", 0))
 	if n > 0:
-		lines.append(_fmt_line("ammo_belt", "%s x%d — +%d projectiles" % [name_of("ammo_belt","Ammo Belt", id_to_name), n, n], id_to_rarity))
+		_add_entry(entries, id_to_name, id_to_rarity, "ammo_belt", "%s x%d - +%d projectiles" % [name_of("ammo_belt","Ammo Belt", id_to_name), n, n])
 	n = int(counts.get("aerodynamics", 0))
 	if n > 0:
 		var mul_a := pow(1.20, float(n))
-		lines.append(_fmt_line("aerodynamics", "%s x%d — +%d%% projectile speed (x%.2f)" % [name_of("aerodynamics","Aerodynamics", id_to_name), n, int(round((mul_a-1.0)*100.0)), mul_a], id_to_rarity))
+		_add_entry(entries, id_to_name, id_to_rarity, "aerodynamics", "%s x%d - +%d%% projectile speed (x%.2f)" % [name_of("aerodynamics","Aerodynamics", id_to_name), n, int(round((mul_a-1.0)*100.0)), mul_a])
 
 	# Survivability
 	n = int(counts.get("protein_bar", 0))
 	if n > 0:
-		lines.append(_fmt_line("protein_bar", "%s x%d — +%d Max HP" % [name_of("protein_bar","Protein Bar", id_to_name), n, 15*n], id_to_rarity))
+		_add_entry(entries, id_to_name, id_to_rarity, "protein_bar", "%s x%d - +%d Max HP" % [name_of("protein_bar","Protein Bar", id_to_name), n, 15*n])
 	n = int(counts.get("medkit", 0))
 	if n > 0:
-		lines.append(_fmt_line("medkit", "%s x%d — +%.1f HP/s regen" % [name_of("medkit","Medkit", id_to_name), n, 1.0*float(n)], id_to_rarity))
+		_add_entry(entries, id_to_name, id_to_rarity, "medkit", "%s x%d - +%.1f HP/s regen" % [name_of("medkit","Medkit", id_to_name), n, 1.0*float(n)])
 
 	# Economy and damage
 	n = int(counts.get("greed_token", 0))
 	if n > 0:
 		var mul_g := pow(1.15, float(n))
-		lines.append(_fmt_line("greed_token", "%s x%d — +%d%% currency (x%.2f)" % [name_of("greed_token","Greed Token", id_to_name), n, int(round((mul_g-1.0)*100.0)), mul_g], id_to_rarity))
+		_add_entry(entries, id_to_name, id_to_rarity, "greed_token", "%s x%d - +%d%% currency (x%.2f)" % [name_of("greed_token","Greed Token", id_to_name), n, int(round((mul_g-1.0)*100.0)), mul_g])
 	n = int(counts.get("vampiric_orb", 0))
 	if n > 0:
-		lines.append(_fmt_line("vampiric_orb", "%s x%d — +%d HP per kill" % [name_of("vampiric_orb","Vampiric Orb", id_to_name), n, n], id_to_rarity))
+		_add_entry(entries, id_to_name, id_to_rarity, "vampiric_orb", "%s x%d - +%d HP per kill" % [name_of("vampiric_orb","Vampiric Orb", id_to_name), n, n])
 	n = int(counts.get("power_core", 0))
 	if n > 0:
 		var mul_p := pow(1.10, float(n))
-		lines.append(_fmt_line("power_core", "%s x%d — +%d%% damage (x%.2f)" % [name_of("power_core","Power Core", id_to_name), n, int(round((mul_p-1.0)*100.0)), mul_p], id_to_rarity))
+		_add_entry(entries, id_to_name, id_to_rarity, "power_core", "%s x%d - +%d%% damage (x%.2f)" % [name_of("power_core","Power Core", id_to_name), n, int(round((mul_p-1.0)*100.0)), mul_p])
 
 	# Spread control
 	n = int(counts.get("stabilizer", 0))
 	if n > 0:
-		lines.append(_fmt_line("stabilizer", "%s x%d — -%d° spread" % [name_of("stabilizer","Stabilizer", id_to_name), n, 2*n], id_to_rarity))
+		_add_entry(entries, id_to_name, id_to_rarity, "stabilizer", "%s x%d - -%d° spread" % [name_of("stabilizer","Stabilizer", id_to_name), n, 2*n])
 
 	# Elemental Power items
 	for id in ["elemental_amp","elemental_catalyst","elemental_core","arcanum"]:
@@ -129,7 +131,7 @@ func _refresh() -> void:
 			"elemental_core": f = 1.30
 			"arcanum": f = 1.40
 		var mul_e := pow(f, float(n))
-		lines.append(_fmt_line(id, "%s x%d — +%d%% Elemental Power (x%.2f)" % [name_of(id, id.capitalize(), id_to_name), n, int(round((mul_e-1.0)*100.0)), mul_e], id_to_rarity))
+		_add_entry(entries, id_to_name, id_to_rarity, id, "%s x%d - +%d%% Elemental Power (x%.2f)" % [name_of(id, id.capitalize(), id_to_name), n, int(round((mul_e-1.0)*100.0)), mul_e])
 
 	# Explosive Power items
 	for id in ["blast_caps","demolition_kit","payload_upgrade","warhead"]:
@@ -143,24 +145,24 @@ func _refresh() -> void:
 			"payload_upgrade": fx = 1.20
 			"warhead": fx = 1.30
 		var mul_x := pow(fx, float(n))
-		lines.append(_fmt_line(id, "%s x%d — +%d%% Explosive Power (x%.2f)" % [name_of(id, id.capitalize(), id_to_name), n, int(round((mul_x-1.0)*100.0)), mul_x], id_to_rarity))
+		_add_entry(entries, id_to_name, id_to_rarity, id, "%s x%d - +%d%% Explosive Power (x%.2f)" % [name_of(id, id.capitalize(), id_to_name), n, int(round((mul_x-1.0)*100.0)), mul_x])
 
 	# Cross-synergy items
 	n = int(counts.get("volatile_rounds", 0))
 	if n > 0:
 		var ch1: float = min(0.5, 0.08 * float(n))
-		lines.append(_fmt_line("volatile_rounds", "%s x%d — %d%% chance for non-explosive hits to explode" % [name_of("volatile_rounds","Volatile Rounds", id_to_name), n, int(round(ch1*100.0))], id_to_rarity))
+		_add_entry(entries, id_to_name, id_to_rarity, "volatile_rounds", "%s x%d - %d%% chance for non-explosive hits to explode" % [name_of("volatile_rounds","Volatile Rounds", id_to_name), n, int(round(ch1*100.0))])
 	n = int(counts.get("elemental_fuse", 0))
 	if n > 0:
 		var ch2: float = min(0.6, 0.10 * float(n))
-		lines.append(_fmt_line("elemental_fuse", "%s x%d — %d%% chance for non-elemental hits to inflict a random element" % [name_of("elemental_fuse","Elemental Fuse", id_to_name), n, int(round(ch2*100.0))], id_to_rarity))
+		_add_entry(entries, id_to_name, id_to_rarity, "elemental_fuse", "%s x%d - %d%% chance for non-elemental hits to inflict a random element" % [name_of("elemental_fuse","Elemental Fuse", id_to_name), n, int(round(ch2*100.0))])
 	n = int(counts.get("payload_catalyst", 0))
 	if n > 0:
 		var ch3: float = min(0.5, 0.10 * float(n))
-		lines.append(_fmt_line("payload_catalyst", "%s x%d — %d%% chance for explosions to apply a random element in the blast" % [name_of("payload_catalyst","Payload Catalyst", id_to_name), n, int(round(ch3*100.0))], id_to_rarity))
+		_add_entry(entries, id_to_name, id_to_rarity, "payload_catalyst", "%s x%d - %d%% chance for explosions to apply a random element in the blast" % [name_of("payload_catalyst","Payload Catalyst", id_to_name), n, int(round(ch3*100.0))])
 	n = int(counts.get("superconductor", 0))
 	if n > 0:
-		lines.append(_fmt_line("superconductor", "%s x%d — Shock arcs +%d, radius +%d" % [name_of("superconductor","Superconductor", id_to_name), n, n, 12*n], id_to_rarity))
+		_add_entry(entries, id_to_name, id_to_rarity, "superconductor", "%s x%d - Shock arcs +%d, radius +%d" % [name_of("superconductor","Superconductor", id_to_name), n, n, 12*n])
 
 	# Turret queued display
 	n = int(counts.get("turret", 0))
@@ -170,9 +172,33 @@ func _refresh() -> void:
 			var left := name_of("turret","Turret", id_to_name)
 			if n > 0:
 				left += " x%d" % n
-			lines.append("%s — Queued: %d next wave" % [left, pending])
+			entries.append({"id":"turret","name":left,"rarity":String(id_to_rarity.get("turret","Uncommon")),"line":"%s - Queued: %d next wave" % [left, pending]})
+
+	# Sort entries by rarity weight (desc), then alphabetically by name
+	var cmp = func(a, b):
+		var weights := {"Common":1, "Uncommon":2, "Rare":3, "Epic":4, "Legendary":5}
+		var wa := int(weights.get(String(a["rarity"]), 0))
+		var wb := int(weights.get(String(b["rarity"]), 0))
+		if wa != wb:
+			return wa > wb
+		return String(a["name"]).to_lower() < String(b["name"]).to_lower()
+	entries.sort_custom(cmp)
+
+	var lines: Array[String] = []
+	for e in entries:
+		lines.append(String(e["line"]))
 
 	if lines.size() == 0:
 		text.text = "No items yet. Buy items in the shop to stack effects."
 	else:
 		text.text = "[b]Items & Effects[/b]\n" + "\n".join(lines)
+
+func _add_entry(entries: Array, id_to_name: Dictionary, id_to_rarity: Dictionary, item_id: String, raw: String) -> void:
+	var rar := String(id_to_rarity.get(item_id, "Common"))
+	var nm := name_of(item_id, item_id.capitalize(), id_to_name)
+	entries.append({
+		"id": item_id,
+		"name": nm,
+		"rarity": rar,
+		"line": _fmt_line(item_id, raw, id_to_rarity),
+	})

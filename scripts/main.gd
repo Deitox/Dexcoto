@@ -25,6 +25,13 @@ func _update_stats_panel_visibility() -> void:
 	else:
 		show_stats = false
 	sp.visible = show_stats
+	if show_stats:
+		_refresh_stats_panel_now()
+
+func _refresh_stats_panel_now() -> void:
+	var stats_node := $UI/StatsPanel/VBox/Stats if has_node("UI/StatsPanel/VBox/Stats") else null
+	if stats_node and stats_node.has_method("refresh"):
+		stats_node.call("refresh")
 
 @export var enemy_scene: PackedScene = preload("res://scenes/Enemy.tscn")
 
