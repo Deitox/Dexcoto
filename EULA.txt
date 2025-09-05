@@ -1,0 +1,56 @@
+Dexcoto - End User License Agreement (EULA)
+Version 1.0 - [YYYY-MM-DD]
+
+THIS SOFTWARE IS LICENSED, NOT SOLD. BY INSTALLING, COPYING, OR USING "DEXCOTO" (THE "GAME"), YOU AGREE TO BE BOUND BY THIS EULA. IF YOU DO NOT AGREE, DO NOT INSTALL OR USE THE GAME.
+
+1) PARTIES
+This EULA is between you, an end user ("You"), and Deitox, the owner/licensor of the Game ("We/Us/Our").
+
+2) GRANT OF LICENSE
+Subject to this EULA and any platform terms (e.g., Steam, Microsoft, Apple), we grant you a personal, limited, revocable, non-exclusive, non-transferable license to install and play the Game for personal, non-commercial use.
+
+3) OWNERSHIP
+We and our licensors own all right, title, and interest in and to the Game and its content. The Game is protected by intellectual-property laws. No rights are granted except as expressly stated.
+
+4) PROHIBITIONS
+You must not:
+(a) sell, rent, lease, sublicense, publish, or distribute the Game or any part of it;
+(b) reverse engineer, decompile, or disassemble the Game except where expressly permitted by law;
+(c) bypass, modify, or interfere with security, DRM, or online services;
+(d) extract, rip, or reuse Game assets (art, audio, text, data) outside the Game;
+(e) create cheats, bots, unauthorized servers, or tools that adversely affect others' experience;
+(f) use the Game for unlawful, defamatory, or infringing purposes.
+
+5) USER-GENERATED CONTENT & MODS
+5.1 Mods. We support user-generated modifications ("Mods") under a separate Modding License that sets the rules for creating, distributing, and using Mods. If you choose to make or use Mods, you must comply with that Modding License in addition to this EULA.
+5.2 Platform Limits. Certain platforms (e.g., iOS/consoles) may restrict executable scripting or dynamic code. On such platforms, Mods may be limited to data-driven content (e.g., levels/skins/configs).
+5.3 Workshop/UGC Hosting. If you upload content to Steam Workshop or other services, you grant us the rights necessary to host, distribute, and display that content in connection with the Game and platform requirements. We may moderate, refuse, or remove content at our discretion.
+
+6) ONLINE SERVICES; UPDATES
+Online features may change or be discontinued at any time. The Game may automatically update. Updates are part of the Game and subject to this EULA.
+
+7) THIRD-PARTY CONTENT & NOTICES
+The Game may include third-party components under their own licenses. See "THIRD_PARTY_NOTICES.txt". Those licenses govern their respective components.
+
+8) STREAMING & CAPTURE
+You may stream or capture gameplay for non-commercial content creation (including monetized ad-supported videos/streams) provided you do not distribute Game assets separately, claim affiliation/endorsement, or violate this EULA or platform policies.
+
+9) TERMINATION
+This EULA terminates automatically if you breach it. Upon termination, you must cease use and uninstall the Game. Sections that by their nature should survive (e.g., Ownership, Disclaimers, Limitations) survive termination.
+
+10) DISCLAIMER OF WARRANTIES
+THE GAME IS PROVIDED "AS IS" AND "AS AVAILABLE," WITHOUT WARRANTIES OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND NON-INFRINGEMENT. YOUR USE IS AT YOUR SOLE RISK.
+
+11) LIMITATION OF LIABILITY
+TO THE MAXIMUM EXTENT PERMITTED BY LAW, WE SHALL NOT BE LIABLE FOR INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, EXEMPLARY, OR PUNITIVE DAMAGES, OR FOR LOSS OF PROFITS, DATA, GOODWILL, OR BUSINESS INTERRUPTION, EVEN IF ADVISED OF THE POSSIBILITY. OUR AGGREGATE LIABILITY SHALL NOT EXCEED THE AMOUNT YOU PAID FOR THE GAME (IF ANY).
+
+12) GOVERNING LAW; VENUE
+This EULA is governed by the laws of [Jurisdiction, e.g., State/Country], without regard to conflict-of-law rules. Courts located in [Venue] shall have exclusive jurisdiction, and you consent to such jurisdiction and venue.
+
+13) CHANGES
+We may update this EULA. Material changes will be noted with a new version/date. Continued use after changes constitutes acceptance.
+
+14) CONTACT
+Deitox
+[Your Country/Region]
+Contact: [your email]

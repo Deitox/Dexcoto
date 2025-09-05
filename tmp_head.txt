@@ -1,520 +1,127 @@
-extends Node2D
+extends Control
 
-@export var enemy_scene: PackedScene = preload("res://scenes/Enemy.tscn")
-
-@onready var player: Node2D = $Player
-@onready var wave_timer: Timer = $WaveTimer
-@onready var spawn_timer: Timer = $SpawnTimer
-@onready var ui_health: Label = $UI/MarginContainer/HBoxContainer/Health
-@onready var ui_level: Label = $UI/MarginContainer/HBoxContainer/Level
-@onready var ui_wave: Label = $UI/MarginContainer/HBoxContainer/Wave
-@onready var ui_time: Label = $UI/MarginContainer/HBoxContainer/Time
-@onready var ui_score: Label = $UI/MarginContainer/HBoxContainer/Score
-@onready var upgrade_panel: Control = $UI/UpgradePanel
-@onready var upgrade_title: Label = $UI/UpgradePanel/VBox/Title
-@onready var btn1: Button = $UI/UpgradePanel/VBox/Options/Option1
-@onready var btn2: Button = $UI/UpgradePanel/VBox/Options/Option2
-@onready var btn3: Button = $UI/UpgradePanel/VBox/Options/Option3
-@onready var arena_bounds: Node = $ArenaBounds
-
-# Shop UI
-@onready var shop_panel: Control = $UI/ShopPanel
-@onready var shop_title: Label = $UI/ShopPanel/VBox/Title
-@onready var shop_opt1: Button = $UI/ShopPanel/VBox/Options/Option1
-@onready var shop_opt2: Button = $UI/ShopPanel/VBox/Options/Option2
-@onready var shop_opt3: Button = $UI/ShopPanel/VBox/Options/Option3
-@onready var shop_reroll: Button = $UI/ShopPanel/VBox/Bottom/Reroll
-@onready var shop_start: Button = $UI/ShopPanel/VBox/Bottom/StartNext
-
-# Pause menu UI
-@onready var pause_panel: Control = $UI/PausePanel
-@onready var pause_resume: Button = $UI/PausePanel/VBox/Resume
-@onready var pause_restart: Button = $UI/PausePanel/VBox/Restart
-@onready var pause_quit: Button = $UI/PausePanel/VBox/Quit
-
-# Character select UI
-@onready var character_panel: Control = $UI/CharacterSelect
-@onready var char_title: Label = $UI/CharacterSelect/VBox/Title
-@onready var char_opts: GridContainer = $UI/CharacterSelect/VBox/Options
-
-# Use global class UpgradeDB (from upgrades.gd)
-const ShopLib = preload("res://scripts/shop.gd")
-const TURRET_SCENE: PackedScene = preload("res://scenes/Turret.tscn")
-const BOSS_SCENE: PackedScene = preload("res://scenes/Boss.tscn")
-
-# HUD highlight map for weapon changes while in shop
-var _hud_highlight: Dictionary = {}
-
-# Performance caps
-const SOFT_CAP_ENEMIES: int = 40
-const MAX_ENEMIES: int = 60
-
-var wave: int = 1
-var score: int = 0
-var wave_time: float = 20.0
-var elapsed: float = 0.0
-var is_game_over: bool = false
-var in_intermission: bool = false
-var awaiting_character: bool = true
-
-var level: int = 1
-var xp: int = 0
-var levels_gained_this_wave: int = 0
-var pending_choices: int = 0
-var current_choices: Array[Dictionary] = []
-
-# Currency and shop
-var currency_total: int = 0
-var currency_gained_this_wave: int = 0
-var shop_offers: Array[Dictionary] = []
-
-var pending_turrets: int = 0
-var enemy_pool: Node = null
-var turret_pool: Node = null
+@onready var text: RichTextLabel = $RichText
 
 func _ready() -> void:
-	randomize()
-	player.add_to_group("player")
-	player.connect("died", Callable(self, "_on_player_died"))
+	process_mode = Node.PROCESS_MODE_WHEN_PAUSED
+	if has_signal("visibility_changed"):
+		visibility_changed.connect(_on_visibility_changed)
+	refresh()
 
-	# Pools
-	if has_node("/root/Main/EnemyPool"):
-		enemy_pool = get_node("/root/Main/EnemyPool")
-	else:
-		enemy_pool = get_tree().get_first_node_in_group("enemy_pool")
-	if has_node("/root/Main/TurretPool"):
-		turret_pool = get_node("/root/Main/TurretPool")
-	else:
-		turret_pool = get_tree().get_first_node_in_group("turret_pool")
+func _on_visibility_changed() -> void:
+	if visible:
+		refresh()
 
-	wave_timer.wait_time = wave_time
-	wave_timer.timeout.connect(_on_wave_timer_timeout)
+# Helpers for formatting
+static func _pct(v: float) -> String:
+	return "%+d%%" % int(round((v - 1.0) * 100.0))
 
-	spawn_timer.wait_time = 1.0
-	spawn_timer.timeout.connect(_on_spawn_timer_timeout)
+static func _deg(v: float) -> String:
+	return "%.1f°" % v
 
-	# Pause menu signals
-	if pause_resume:
-		pause_resume.pressed.connect(_on_pause_resume)
-	if pause_restart:
-		pause_restart.pressed.connect(_on_pause_restart)
-	if pause_quit:
-		pause_quit.pressed.connect(_on_pause_quit)
-
-	_show_character_select()
-	_update_ui()
-	_center_player_in_arena()
-
-	# Connect weapon events to update HUD and notify merges
-	if player:
-		if not player.is_connected("weapon_added", Callable(self, "_on_weapon_added")):
-			player.connect("weapon_added", Callable(self, "_on_weapon_added"))
-		if not player.is_connected("weapon_merged", Callable(self, "_on_weapon_merged")):
-			player.connect("weapon_merged", Callable(self, "_on_weapon_merged"))
-
-func _center_player_in_arena() -> void:
+func refresh() -> void:
+	var player = get_tree().get_first_node_in_group("player")
 	if player == null:
 		return
-	if arena_bounds and arena_bounds.has_method("get_arena_rect"):
-		var r: Rect2 = arena_bounds.call("get_arena_rect")
-		var cpos := r.position + r.size * 0.5
-		if player and player.has_method("set_position_and_reset_guard"):
-			player.call("set_position_and_reset_guard", cpos)
+	var bullet_pool = get_tree().get_first_node_in_group("bullet_pool")
+
+	# Core multipliers and caps
+	var dmg_mult: float = float(player.get("damage_mult"))
+	var atk_mult: float = float(player.get("attack_speed_mult"))
+	var atk_cap: float = float(player.MAX_ATTACK_SPEED_MULT)
+	var proj_bonus: int = int(player.get("projectiles_per_shot"))
+	var proj_cap: int = int(player.MAX_PROJECTILE_BONUS)
+	var proj_speed_mult: float = float(player.get("projectile_speed_mult"))
+	var per_shot_cap: int = int(player.MAX_TOTAL_PROJECTILES)
+	var min_interval: float = float(player.MIN_WEAPON_INTERVAL)
+	var soft_proj_cap: int = 200
+
+	# Additional player attributes
+	var hp: int = int(player.get("health"))
+	var hp_max: int = int(player.get("max_health"))
+	var regen: float = float(player.get("regen_per_second"))
+	var move_spd: float = float(player.get("move_speed"))
+	var spread_deg: float = float(player.get("spread_degrees"))
+	var currency_mult: float = float(player.get("currency_gain_mult"))
+	var lifesteal: int = int(player.get("lifesteal_per_kill"))
+
+	# Elemental / Explosive scaling stats
+	var elemental_power: float = float(player.get("elemental_damage_mult")) if player.has_method("get") else 1.0
+	var explosive_power: float = float(player.get("explosive_power_mult")) if player.has_method("get") else 1.0
+
+	var beam_threshold: float = 900.0
+	if bullet_pool and bullet_pool.has_method("get_beam_threshold"):
+		beam_threshold = float(bullet_pool.call("get_beam_threshold"))
+
+	var as_overflow_mult: float = float(player.get("overflow_damage_mult_from_attack_speed")) if player.has_method("get") else 1.0
+	var proj_overflow_mult: float = float(player.get("overflow_damage_mult_from_projectiles")) if player.has_method("get") else 1.0
+
+	# Build grouped, readable lines
+	var lines: Array[String] = []
+	lines.append("[center][b]Player Stats[/b][/center]")
+
+	# Tier color helpers for headers (matches main.gd palette)
+	func _tier_hex(t: int) -> String:
+		var c := Color(1,1,1)
+		if t <= 1:
+			c = Color(0.85, 0.85, 0.85)
+		elif t == 2:
+			c = Color(0.4, 1.0, 0.4)
+		elif t == 3:
+			c = Color(0.4, 0.6, 1.0)
+		elif t == 4:
+			c = Color(0.8, 0.4, 1.0)
+		elif t == 5:
+			c = Color(1.0, 0.7, 0.2)
 		else:
-			player.global_position = cpos
-		return
-	# Fallback to viewport center
-	var rect := get_viewport().get_visible_rect()
-	var cpos2 := rect.position + rect.size * 0.5
-	if player and player.has_method("set_position_and_reset_guard"):
-		player.call("set_position_and_reset_guard", cpos2)
-	else:
-		player.global_position = cpos2
+			c = Color(1.0, 0.3, 0.3)
+		return c.to_html(false)
 
-func _process(delta: float) -> void:
-	if is_game_over:
-		return
-	if not in_intermission and not awaiting_character:
-		elapsed += delta
-		_optimize_runtime()
-	_update_ui()
+	# Core
+	lines.append("[b][color=%s]Core[/color][/b]" % _tier_hex(1))
+	lines.append("• Health: %d/%d    • Regen: %.1f/s" % [hp, hp_max, regen])
+	lines.append("• Move Speed: %.0f px/s" % move_spd)
 
-func _unhandled_input(event: InputEvent) -> void:
-	if event.is_action_pressed("ui_cancel"):
-		_toggle_pause()
+	# Offense
+	lines.append("[b][color=%s]Offense[/color][/b]" % _tier_hex(3))
+	lines.append("• Damage: x%.2f (%s)" % [dmg_mult, _pct(dmg_mult)])
+	var as_color := "white"
+	if atk_mult >= atk_cap:
+		as_color = "#ff7043" # at cap
+	elif atk_mult >= atk_cap * 0.9:
+		as_color = "#ffb74d" # near cap
+	lines.append("• [color=%s]Attack Speed: x%.2f[/color]  (cap x%.2f, min interval %.2fs)" % [as_color, atk_mult, atk_cap, min_interval])
+	if as_overflow_mult > 1.0:
+		lines.append("  ◦ [color=#66bb6a]Overflow → Damage: %s[/color]" % _pct(as_overflow_mult))
+	lines.append("• Spread: %s" % _deg(spread_deg))
 
-func _toggle_pause() -> void:
-	if pause_panel == null:
-		return
-	var now_paused := get_tree().paused
-	if now_paused:
-		get_tree().paused = false
-		pause_panel.visible = false
-	else:
-		pause_panel.visible = true
-		get_tree().paused = true
+	# Projectiles
+	lines.append("[b][color=%s]Projectiles[/color][/b]" % _tier_hex(2))
+	var proj_color := (proj_bonus >= proj_cap) ? "#ff7043" : "white"
+	lines.append("• [color=%s]Bonus Projectiles: +%d[/color]  (cap +%d)" % [proj_color, proj_bonus, proj_cap])
+	if proj_overflow_mult > 1.0:
+		lines.append("  ◦ [color=#66bb6a]Overflow → Damage: %s[/color]" % _pct(proj_overflow_mult))
+	lines.append("• Projectile Speed: x%.2f" % proj_speed_mult)
+	lines.append("• Per-shot cap: %d    • Global soft cap: %d" % [per_shot_cap, soft_proj_cap])
+	lines.append("• Beam threshold: %.0f px/s" % beam_threshold)
 
-func _on_pause_resume() -> void:
-	get_tree().paused = false
-	pause_panel.visible = false
+	# Elemental / Explosive (only if modified)
+	var show_elem := abs(elemental_power - 1.0) > 0.001
+	var show_expl := abs(explosive_power - 1.0) > 0.001
+	if show_elem or show_expl:
+		lines.append("[b][color=%s]Powers[/color][/b]" % _tier_hex(4))
+		if show_elem:
+			lines.append("• Elemental Power: x%.2f (%s)" % [elemental_power, _pct(elemental_power)])
+		if show_expl:
+			lines.append("• Explosive Power: x%.2f (%s)" % [explosive_power, _pct(explosive_power)])
 
-func _on_pause_restart() -> void:
-	get_tree().paused = false
-	get_tree().reload_current_scene()
+	# Economy (only if applicable)
+	if abs(currency_mult - 1.0) > 0.001 or lifesteal > 0:
+		lines.append("[b][color=%s]Economy[/color][/b]" % _tier_hex(5))
+		if abs(currency_mult - 1.0) > 0.001:
+			lines.append("• Currency Gain: x%.2f (%s)" % [currency_mult, _pct(currency_mult)])
+		if lifesteal > 0:
+			lines.append("• Lifesteal: +%d HP/kill" % lifesteal)
 
-func _on_pause_quit() -> void:
-	get_tree().quit()
-
-func _on_spawn_timer_timeout() -> void:
-	_adjust_spawning()
-	_spawn_enemies()
-
-func _on_wave_timer_timeout() -> void:
-	begin_intermission()
-
-
-func _active_enemies_count() -> int:
-	var total := 0
-	for e in get_tree().get_nodes_in_group("enemies"):
-		if not is_instance_valid(e):
-			continue
-		var is_active := true
-		if e.has_method("get"):
-			var a = e.get("active")
-			if a != null:
-				is_active = bool(a)
-		if is_active:
-			total += 1
-	return total
-
-func _spawn_enemies() -> void:
-	var base_count := 2 + int(round(float(wave) * 1.5))
-
-	var enemies := _active_enemies_count()
-	var soft_cap := SOFT_CAP_ENEMIES
-	var count := base_count
-	# Scale enemy power with wave to avoid excessive counts
-	var tier := 1 + int(floor(max(0.0, float(wave - 1)) / 3.0))
-	if enemies > soft_cap:
-		# reduce count and increase tier to keep pressure without clutter
-		var over := enemies - soft_cap
-		count = max(1, int(round(float(base_count) * 0.4)))
-		tier += min(3, int(floor(float(over) / 20.0)) + 1)
-	# Hard cap: never exceed MAX_ENEMIES active
-	var allowed: int = max(0, MAX_ENEMIES - enemies)
-	count = min(count, allowed)
-	for i in range(count):
-		var pos := _random_spawn_position()
-		if enemy_pool and enemy_pool.has_method("spawn_enemy"):
-			enemy_pool.call("spawn_enemy", pos, tier, player)
-		else:
-			var e := enemy_scene.instantiate()
-			e.global_position = pos
-			e.target = player
-			if e.has_method("set_tier"):
-				e.set_tier(tier)
-			add_child(e)
-
-func _adjust_spawning() -> void:
-	var enemies := _active_enemies_count()
-	var soft_cap := SOFT_CAP_ENEMIES
-	if enemies > soft_cap:
-		spawn_timer.wait_time = min(3.0, spawn_timer.wait_time * 1.25)
-	else:
-		spawn_timer.wait_time = max(0.25, spawn_timer.wait_time * 0.95)
-
-func _random_spawn_position() -> Vector2:
-	if arena_bounds and arena_bounds.has_method("get_arena_rect"):
-		var r: Rect2 = arena_bounds.call("get_arena_rect")
-		# keep a small margin so spawns are fully inside the walls
-		var m: float = 24.0
-		var x := randf_range(r.position.x + m, r.position.x + r.size.x - m)
-		var y := randf_range(r.position.y + m, r.position.y + r.size.y - m)
-		return Vector2(x, y)
-	# fallback to viewport center area if bounds missing
-	var rect := get_viewport().get_visible_rect()
-	var x2 := randf_range(rect.position.x + 16.0, rect.position.x + rect.size.x - 16.0)
-	var y2 := randf_range(rect.position.y + 16.0, rect.position.y + rect.size.y - 16.0)
-	return Vector2(x2, y2)
-
-func _on_player_died() -> void:
-	is_game_over = true
-	wave_timer.stop()
-	spawn_timer.stop()
-	var game_over_label := $UI/CenterContainer/GameOverLabel
-	if game_over_label:
-		game_over_label.visible = true
-
-func add_score(kills: int, reward_pts: int) -> void:
-	# Score reflects number of kills.
-	score += kills
-	# XP and currency scale with enemy power via reward_pts.
-	_gain_xp(reward_pts)
-	var mult: float = 1.0
-	if player and player.has_method("get"):
-		mult = float(player.get("currency_gain_mult"))
-	currency_gained_this_wave += int(round(reward_pts * mult))
-	# Lifesteal should reflect actual kills, not reward scaling.
-	if player and player.lifesteal_per_kill > 0:
-		player.health = min(player.max_health, player.health + player.lifesteal_per_kill * kills)
-
-func _update_ui() -> void:
-	if ui_health:
-		ui_health.text = "HP: %d" % player.health
-	if ui_wave:
-		ui_wave.text = "  |  Wave: %d" % wave
-	if ui_time:
-		ui_time.text = "  |  Time: %d" % int(max(0.0, wave_time - elapsed))
-	if ui_score:
-		ui_score.text = "  |  Score: %d" % score
-	if ui_level:
-		var need := _xp_for_next_level(level)
-		ui_level.text = "  |  Lv: %d (%d/%d)" % [level, xp, need]
-	_update_weapons_hud()
-
-func _update_weapons_hud() -> void:
-	var labels: Array = [hud_slot1, hud_slot2, hud_slot3, hud_slot4, hud_slot5, hud_slot6]
-	for i in range(labels.size()):
-		var text := "%d: --" % (i + 1)
-		if i < player.weapons.size():
-			var w: Dictionary = player.weapons[i]
-			var wname: String = String(w.get("name", "?"))
-			var cd: float = float(w.get("cd", 0.0))
-			var cd_s: String = ("RDY" if cd <= 0.0 else "%.1fs" % cd)
-			# Remove textual tier tag; color indicates tier
-			text = "%d: %s  [%s]" % [i + 1, wname, cd_s]
-		if labels[i]:
-			labels[i].text = text
-			var tier_for_color: int = 1
-			if i < player.weapons.size():
-				tier_for_color = int(player.weapons[i].get("tier", 1))
-			var col := _color_for_tier(tier_for_color)
-			labels[i].add_theme_color_override("font_color", col)
-			# Apply or clear highlight outline
-			if _hud_highlight.has(i):
-				var hcol: Color = _hud_highlight[i]
-				labels[i].add_theme_color_override("font_outline_color", hcol)
-				labels[i].add_theme_constant_override("outline_size", 2)
-			else:
-				labels[i].remove_theme_color_override("font_outline_color")
-				labels[i].remove_theme_constant_override("outline_size")
-
-func _highlight_hud_slot(index: int, color: Color) -> void:
-	_hud_highlight[index] = color
-	_update_weapons_hud()
-
-func _clear_hud_highlights() -> void:
-	_hud_highlight.clear()
-	_update_weapons_hud()
-
-func _xp_for_next_level(l: int) -> int:
-	return 5 + l * 5
-
-func _gain_xp(pts: int) -> void:
-	xp += pts
-	var need := _xp_for_next_level(level)
-	while xp >= need:
-		xp -= need
-		level += 1
-		levels_gained_this_wave += 1
-		need = _xp_for_next_level(level)
-
-func begin_intermission() -> void:
-	if in_intermission:
-		return
-	in_intermission = true
-	spawn_timer.stop()
-	pending_choices = levels_gained_this_wave
-	get_tree().paused = true
-	if pending_choices > 0:
-		_show_upgrade_choices()
-	else:
-		open_shop()
-
-func _show_upgrade_choices() -> void:
-	upgrade_panel.visible = true
-	upgrade_title.text = "Choose an upgrade (%d left)" % pending_choices
-	current_choices = UpgradeDB.weighted_choices(3)
-	var texts: Array[String] = []
-	for u in current_choices:
-		texts.append(String(u["name"]))
-	btn1.text = texts[0]
-	btn2.text = texts[1]
-	btn3.text = texts[2]
-	var r1: String = String(current_choices[0].get("rarity", "Common"))
-	var r2: String = String(current_choices[1].get("rarity", "Common"))
-	var r3: String = String(current_choices[2].get("rarity", "Common"))
-	var c1 := _color_for_rarity(r1)
-	var c2 := _color_for_rarity(r2)
-	var c3 := _color_for_rarity(r3)
-	btn1.add_theme_color_override("font_color", c1)
-	btn1.add_theme_color_override("font_hover_color", c1)
-	btn1.add_theme_color_override("font_pressed_color", c1)
-	btn1.add_theme_color_override("font_focus_color", c1)
-	btn2.add_theme_color_override("font_color", c2)
-	btn2.add_theme_color_override("font_hover_color", c2)
-	btn2.add_theme_color_override("font_pressed_color", c2)
-	btn2.add_theme_color_override("font_focus_color", c2)
-	btn3.add_theme_color_override("font_color", c3)
-	btn3.add_theme_color_override("font_hover_color", c3)
-	btn3.add_theme_color_override("font_pressed_color", c3)
-	btn3.add_theme_color_override("font_focus_color", c3)
-	_refresh_item_summaries()
-
-func _on_option_pressed(index: int) -> void:
-	if index >= 0 and index < current_choices.size():
-		var upg: Dictionary = current_choices[index]
-		if player and player.has_method("apply_upgrade"):
-			player.apply_upgrade(upg)
-		pending_choices -= 1
-		if pending_choices > 0:
-			_show_upgrade_choices()
-		else:
-			upgrade_panel.visible = false
-			open_shop()
-
-func open_shop() -> void:
-	# Move earned currency to wallet
-	currency_total += currency_gained_this_wave
-	currency_gained_this_wave = 0
-	_generate_shop_offers()
-	_show_shop()
-	_refresh_item_summaries()
-
-func _generate_shop_offers() -> void:
-	# Generate a new set, but preserve any locked, unsold items in their slots.
-	var prev: Array[Dictionary] = shop_offers
-	var generated: Array[Dictionary] = ShopLib.generate_offers(3, wave)
-	# Initialize flags on generated offers
-	for i in range(generated.size()):
-		generated[i]["sold"] = false
-		generated[i]["locked"] = false
-	# Overlay locked offers from previous list
-	for i in range(min(3, prev.size())):
-		var o: Dictionary = prev[i]
-		if bool(o.get("locked", false)) and not bool(o.get("sold", false)):
-			generated[i] = o
-	shop_offers = generated
-
-func _show_shop() -> void:
-	shop_panel.visible = true
-	_update_shop_title()
-	# removed unused variable
-	var btns: Array = [shop_opt1, shop_opt2, shop_opt3]
-	for i in range(min(3, shop_offers.size())):
-		var o: Dictionary = shop_offers[i]
-		var sold := bool(o.get("sold", false))
-		var locked := bool(o.get("locked", false))
-		var display_name: String = String(o.get("name","?"))
-		var label := "%s - %d$\n%s" % [display_name, int(o["cost"]), o.get("desc", "")]
-		if sold:
-			label = "%s\n[SOLD OUT]" % o["name"]
-		elif locked:
-			label = "🔒 %s" % label
-		btns[i].text = label
-		btns[i].disabled = sold
-		# Color: items by rarity; weapons by tier if >1 otherwise rarity
-		var rarity: String = String(o.get("rarity", "Common"))
-		var rcol: Color = _color_for_rarity(rarity)
-		if String(o.get("kind","")) == "weapon":
-			var wtier: int = int(o.get("tier", 1))
-			# Always color weapons by tier for consistency with inventory
-			rcol = _color_for_tier(wtier)
-		if sold:
-			rcol = Color(0.6, 0.6, 0.6)
-		btns[i].add_theme_color_override("font_color", rcol)
-		btns[i].add_theme_color_override("font_hover_color", rcol)
-		btns[i].add_theme_color_override("font_pressed_color", rcol)
-		btns[i].add_theme_color_override("font_focus_color", rcol)
-		# Clear any previous border overrides to avoid stale highlights
-		btns[i].remove_theme_stylebox_override("normal")
-		btns[i].remove_theme_stylebox_override("hover")
-		btns[i].remove_theme_stylebox_override("pressed")
-		btns[i].remove_theme_stylebox_override("focus")
-		# Subtle blue border for locked items
-		if locked and not sold:
-			var sbl := StyleBoxFlat.new()
-			sbl.draw_center = false
-			sbl.border_color = Color(0.4, 0.7, 1.0, 0.95)
-			sbl.border_width_left = 3
-			sbl.border_width_top = 3
-			sbl.border_width_right = 3
-			sbl.border_width_bottom = 3
-			btns[i].add_theme_stylebox_override("normal", sbl)
-			btns[i].add_theme_stylebox_override("hover", sbl)
-			btns[i].add_theme_stylebox_override("pressed", sbl)
-			btns[i].add_theme_stylebox_override("focus", sbl)
-		# Border highlight only for weapons the player already owns (helps spot mergable items)
-		if String(o.get("kind","")) == "weapon" and player != null:
-			var wid: String = String(o.get("id", ""))
-			var wtier: int = int(o.get("tier", 1))
-			var owned_total: int = _count_player_weapon(wid)
-			var owned_same_tier: int = _count_player_weapon_at_tier(wid, wtier)
-			if owned_same_tier >= 2:
-				# Green, thicker border when this purchase would cause an immediate merge
-				var sb := StyleBoxFlat.new()
-				sb.draw_center = false
-				sb.border_color = Color(0.3, 1.0, 0.3, 0.95)
-				sb.border_width_left = 4
-				sb.border_width_top = 4
-				sb.border_width_right = 4
-				sb.border_width_bottom = 4
-				btns[i].add_theme_stylebox_override("normal", sb)
-				btns[i].add_theme_stylebox_override("hover", sb)
-				btns[i].add_theme_stylebox_override("pressed", sb)
-				btns[i].add_theme_stylebox_override("focus", sb)
-			elif owned_total > 0:
-				# Optional: thin yellow border when owned but not an immediate merge
-				var sb2 := StyleBoxFlat.new()
-				sb2.draw_center = false
-				sb2.border_color = Color(1.0, 1.0, 0.2, 0.9)
-				sb2.border_width_left = 2
-				sb2.border_width_top = 2
-				sb2.border_width_right = 2
-				sb2.border_width_bottom = 2
-				btns[i].add_theme_stylebox_override("normal", sb2)
-				btns[i].add_theme_stylebox_override("hover", sb2)
-				btns[i].add_theme_stylebox_override("pressed", sb2)
-				btns[i].add_theme_stylebox_override("focus", sb2)
-	# If fewer than 3 offers, clear remaining buttons
-	for i in range(shop_offers.size(), 3):
-		btns[i].text = "--"
-		btns[i].disabled = true
-	_refresh_item_summaries()
-
-func _update_shop_title() -> void:
-	shop_title.text = "Shop - Currency: %d" % currency_total
-
-func _count_player_weapon(id: String) -> int:
-	if player == null:
-		return 0
-	var cnt := 0
-	for w in player.weapons:
-		if String(w.get("id","")) == id:
-			cnt += 1
-	return cnt
-
-func _count_player_weapon_at_tier(id: String, tier: int) -> int:
-	if player == null:
-		return 0
-	var cnt := 0
-	for w in player.weapons:
-		if String(w.get("id","")) == id and int(w.get("tier", 1)) == tier:
-			cnt += 1
-	return cnt
-
-func _optimize_runtime() -> void:
-	# Placeholder for future frame-based adaptations (pooling, LOD, etc.).
-	# Current adaptive logic handled in spawn adjustment and projectile/turret scaling.
-	pass
-
-func _color_for_rarity(r: String) -> Color:
-	match r:
-		"Common":
-			return Color(0.85, 0.85, 0.85)
-		"Uncommon":
-			return Color(0.4, 1.0, 0.4)
-		"Rare":
-			return Color(0.4, 0.6, 1.0)
-		"Epic":
-			return Color(0.8, 0.4, 1.0)
+	text.bbcode_enabled = true
+	text.text = "\n".join(lines)

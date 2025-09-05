@@ -12,6 +12,30 @@ func _on_visibility_changed() -> void:
 	if visible:
 		refresh()
 
+# Helpers for formatting
+static func _pct(v: float) -> String:
+	return "%+d%%" % int(round((v - 1.0) * 100.0))
+
+static func _deg(v: float) -> String:
+	return "%.1f°" % v
+
+# Tier color helpers for headers (matches main.gd palette)
+static func _tier_hex(t: int) -> String:
+	var c := Color(1,1,1)
+	if t <= 1:
+		c = Color(0.85, 0.85, 0.85)
+	elif t == 2:
+		c = Color(0.4, 1.0, 0.4)
+	elif t == 3:
+		c = Color(0.4, 0.6, 1.0)
+	elif t == 4:
+		c = Color(0.8, 0.4, 1.0)
+	elif t == 5:
+		c = Color(1.0, 0.7, 0.2)
+	else:
+		c = Color(1.0, 0.3, 0.3)
+	return c.to_html(false)
+
 func refresh() -> void:
 	var player = get_tree().get_first_node_in_group("player")
 	if player == null:
@@ -39,14 +63,8 @@ func refresh() -> void:
 	var lifesteal: int = int(player.get("lifesteal_per_kill"))
 
 	# Elemental / Explosive scaling stats
-	var elemental_power: float = 1.0
-	var _epv = player.get("elemental_damage_mult")
-	if _epv != null:
-		elemental_power = float(_epv)
-	var explosive_power: float = 1.0
-	var _xp = player.get("explosive_power_mult")
-	if _xp != null:
-		explosive_power = float(_xp)
+	var elemental_power: float = float(player.get("elemental_damage_mult")) if player.has_method("get") else 1.0
+	var explosive_power: float = float(player.get("explosive_power_mult")) if player.has_method("get") else 1.0
 
 	var beam_threshold: float = 900.0
 	if bullet_pool and bullet_pool.has_method("get_beam_threshold"):
@@ -55,31 +73,55 @@ func refresh() -> void:
 	var as_overflow_mult: float = float(player.get("overflow_damage_mult_from_attack_speed")) if player.has_method("get") else 1.0
 	var proj_overflow_mult: float = float(player.get("overflow_damage_mult_from_projectiles")) if player.has_method("get") else 1.0
 
+	# Build grouped, readable lines
 	var lines: Array[String] = []
-	lines.append("[b]Player Stats[/b]")
-	lines.append("Health: %d/%d  |  Regen: %.1f/s" % [hp, hp_max, regen])
-	lines.append("Move Speed: %.0f px/s" % move_spd)
-	lines.append("Damage: x%.2f" % dmg_mult)
-	var as_line := "Attack Speed: x%.2f (cap x%.2f)" % [atk_mult, atk_cap]
+	lines.append("[center][b]Player Stats[/b][/center]")
+
+	# Core
+	lines.append("[b][color=%s]Core[/color][/b]" % _tier_hex(1))
+	lines.append("- Health: %d/%d    - Regen: %.1f/s" % [hp, hp_max, regen])
+	lines.append("- Move Speed: %.0f px/s" % move_spd)
+
+	# Offense
+	lines.append("[b][color=%s]Offense[/color][/b]" % _tier_hex(3))
+	lines.append("- Damage: x%.2f (%s)" % [dmg_mult, _pct(dmg_mult)])
+	var as_color := "white"
+	if atk_mult >= atk_cap:
+		as_color = "#ff7043" # at cap
+	elif atk_mult >= atk_cap * 0.9:
+		as_color = "#ffb74d" # near cap
+	lines.append("- [color=%s]Attack Speed: x%.2f[/color]  (cap x%.2f, min interval %.2fs)" % [as_color, atk_mult, atk_cap, min_interval])
 	if as_overflow_mult > 1.0:
-		var pct := int(round((as_overflow_mult - 1.0) * 100.0))
-		as_line += "  |  Overflow to Damage: +%d%%" % pct
-	lines.append(as_line)
-	var proj_line := "Projectiles: +%d (cap +%d)" % [proj_bonus, proj_cap]
+		lines.append("  * [color=#66bb6a]Overflow -> Damage: %s[/color]" % _pct(as_overflow_mult))
+	lines.append("- Spread: %s" % _deg(spread_deg))
+
+	# Projectiles
+	lines.append("[b][color=%s]Projectiles[/color][/b]" % _tier_hex(2))
+	var proj_color := "#ff7043" if proj_bonus >= proj_cap else "white"
+	lines.append("- [color=%s]Bonus Projectiles: +%d[/color]  (cap +%d)" % [proj_color, proj_bonus, proj_cap])
 	if proj_overflow_mult > 1.0:
-		var pct2 := int(round((proj_overflow_mult - 1.0) * 100.0))
-		proj_line += "  |  Overflow to Damage: +%d%%" % pct2
-	lines.append(proj_line)
-	lines.append("Projectile Speed: x%.2f  |  Beam threshold: %.0f px/s" % [proj_speed_mult, beam_threshold])
-	lines.append("Per-shot projectile cap: %d  |  Overflow scales damage x(shots/cap)" % per_shot_cap)
-	lines.append("Soft projectile count cap: %d  |  Overload reduces shots, boosts damage" % soft_proj_cap)
-	lines.append("Min weapon interval: %.2fs" % min_interval)
-	lines.append("Currency Gain: x%.2f" % currency_mult)
-	lines.append("Lifesteal: +%d HP per kill" % lifesteal)
-	lines.append("Elemental Power: x%.2f" % elemental_power)
-	lines.append("Explosive Power: x%.2f" % explosive_power)
-	lines.append("Spread: %.1f°" % spread_deg)
+		lines.append("  * [color=#66bb6a]Overflow -> Damage: %s[/color]" % _pct(proj_overflow_mult))
+	lines.append("- Projectile Speed: x%.2f" % proj_speed_mult)
+	lines.append("- Per-shot cap: %d    - Global soft cap: %d" % [per_shot_cap, soft_proj_cap])
+	lines.append("- Beam threshold: %.0f px/s" % beam_threshold)
+
+	# Elemental / Explosive (only if modified)
+	var show_elem: bool = abs(elemental_power - 1.0) > 0.001
+	var show_expl: bool = abs(explosive_power - 1.0) > 0.001
+	if show_elem or show_expl:
+		lines.append("[b][color=%s]Powers[/color][/b]" % _tier_hex(4))
+		if show_elem:
+			lines.append("- Elemental Power: x%.2f (%s)" % [elemental_power, _pct(elemental_power)])
+		if show_expl:
+			lines.append("- Explosive Power: x%.2f (%s)" % [explosive_power, _pct(explosive_power)])
+
+	# Economy (only if applicable)
+	if abs(currency_mult - 1.0) > 0.001 or lifesteal > 0:
+		lines.append("[b][color=%s]Economy[/color][/b]" % _tier_hex(5))
+		if abs(currency_mult - 1.0) > 0.001:
+			lines.append("- Currency Gain: x%.2f (%s)" % [currency_mult, _pct(currency_mult)])
+		if lifesteal > 0:
+			lines.append("- Lifesteal: +%d HP/kill" % lifesteal)
 
 	text.bbcode_enabled = true
 	text.text = "\n".join(lines)
-

@@ -8,8 +8,17 @@ Tiny Godot 4 arena-survivor prototype. Move, auto-aim at the nearest enemy, and 
 
 ## Run
 
-- Open this folder in Godot (Project Manager → Import → select `project.godot`).
+- Open this folder in Godot (Project Manager > Import > select `project.godot`).
 - Press F5 to run the main scene (`scenes/Main.tscn`).
+
+## CLI
+
+- Run game: `godot4 --path .`
+- Open editor: `godot4 --path . --editor`
+
+## Version Notes
+
+- If using Godot 4.0-4.3, update or remove  `config/features` in `project.godot` (currently set to `4.4`) so it matches your editor version. 
 
 ## Controls
 
@@ -34,7 +43,7 @@ Tiny Godot 4 arena-survivor prototype. Move, auto-aim at the nearest enemy, and 
 - Enemies & Boss: Enemies scale by tier; bosses scale by wave. Kills grant score, XP, and currency based on enemy power.
 - Character Select: Choose a starter at the beginning (from the weapon list), which sets your color and initial weapon.
 - HUD & Shop UX: Weapon HUD shows tier coloring; new/merged weapons get temporary highlights. Shop buttons color by rarity/tier; right-click locks offers. Reroll costs 5 and preserves locked, unsold offers.
- - Elemental System: Elemental weapons scale with your Elemental Power stat (upgrades). Fire can Ignite (DoT), Cryo can Freeze (briefly immobilize), Shock can Arc to nearby enemies, and Void can inflict Vulnerable (take increased damage) — chances and potency grow with Elemental Power.
+- Elemental System: Elemental weapons scale with your Elemental Power stat (upgrades). Fire can Ignite (DoT), Cryo can Freeze (briefly immobilize), Shock can Arc to nearby enemies, and Void can inflict Vulnerable (take increased damage) - chances and potency grow with Elemental Power.
 
 ## Performance Notes
 
@@ -47,8 +56,8 @@ Tiny Godot 4 arena-survivor prototype. Move, auto-aim at the nearest enemy, and 
 
 - Weapons (selection): Pistol, SMG, Shotgun, Rifle, Minigun, Cannon, Laser, Railgun, Flamethrower (Fire), Cryo Blaster (Cryo), Shock Rifle (Shock), Void Projector (Void), Boomerang, Crossbow, Burst Pistol, Splitter, Cannon Mk.II.
 - Items (selection): Money Charm, Turret, Scope, Overcharger, Adrenaline, Lifesteal Charm, Boots, Caffeine, Ammo Belt, Aerodynamics, Protein Bar, Medkit, Greed Token, Vampiric Orb, Power Core, Stabilizer.
-- Upgrades: Weighted by rarity (Common → Legendary). Categories include Attack Speed, Damage, Move Speed, Max HP, Projectile Speed, Regeneration, and +Projectiles.
- - Elemental Power: New upgrade that boosts elemental weapons’ damage and effect chance/potency.
+- Upgrades: Weighted by rarity (Common through Legendary). Categories include Attack Speed, Damage, Move Speed, Max HP, Projectile Speed, Regeneration, and +Projectiles.
+- Elemental Power: New upgrade that boosts elemental weapons' damage and effect chance/potency.
 
 ## Project Structure
 
@@ -71,13 +80,53 @@ Tiny Godot 4 arena-survivor prototype. Move, auto-aim at the nearest enemy, and 
 - New enemies: extend enemy scenes/scripts or add variants and update spawning logic in `scripts/main.gd`/`scripts/enemy_pool.gd`.
 - Tuning caps: see constants in `scripts/main.gd`, `scripts/player.gd`, `scripts/turret.gd`, and `scripts/bullet_pool.gd`.
 
+## Tuning
+
+- Enemies (in `scripts/main.gd`): `SOFT_CAP_ENEMIES`, `MAX_ENEMIES`, `GROUP_BASE_DELAY`, `GROUP_STAGGER`, `GROUP_GAP_MIN`, `GROUP_GAP_MAX`, and `wave_time`.
+- Projectiles (in `scripts/player.gd`): `MAX_TOTAL_PROJECTILES`, `MAX_PROJECTILE_BONUS`, `MIN_WEAPON_INTERVAL`, `MAX_ATTACK_SPEED_MULT`; projectile overload soft cap ~200.
+
+## Weapon Fields
+
+- Base: `id`, `name`, `fire_interval`, `damage`, `speed`, `projectiles`, `color`.
+- Elemental (optional): `element`, `element_proc`, `ignite_factor`, `ignite_duration`, `freeze_duration`, `arc_count`, `arc_radius`, `arc_factor`, `vuln`, `vuln_duration`.
+- Explosive (optional): `explosive`, `expl_radius`, `expl_factor`.
+
+## Troubleshooting
+
+- Windows import/file locking issues: try `tools/fix_lock.ps1`.
+- Console message "[Guard] Cancelled abnormal move": defensive anti-teleport check; safe to ignore.
+
+## Dev Notes
+
+- Formatting helper: `normalize_gd_tabs.py` for consistent GDScript indentation.
+- Useful groups/pools: `enemy_pool`, `turret_pool`, `projectiles`, `enemies`.
+
+## Modding
+
+- See  `MODDING_SDK_README.md` for mod support, licenses (`MODDING_LICENSE.txt`), and third-party notices. 
+- Commercial mods require the addendum in `COMMERCIAL_MOD_ADDENDUM_TEMPLATE.txt`.
+
+## Export
+
+- Use Project > Export to add a desktop preset and export binaries. No presets are committed in this repo.
+
 ## Known Limitations
 
 - Programmer art; no audio.
 - No save/progression between runs.
 - If you see odd characters in old UI labels, retype them in the editor (encoding artifacts in some legacy scene text).
 
+## License
+
+- Game code: Proprietary. See `CODE_PROPRIETARY_NOTICE.txt` and `EULA.txt`.
+- Modding SDK: MIT-licensed. See `LICENSE-SDK.txt` (SDK only) and `MODDING_SDK_README.md`.
+- Modding terms: see `MODDING_LICENSE.txt` and the commercial template in `COMMERCIAL_MOD_ADDENDUM_TEMPLATE.txt`.
+- Assets/content: see `ASSET-LICENSE.md` and `THIRD_PARTY_NOTICES.txt`.
+
 ## Credits
 
 - Built with Godot 4.x by Deitox. Inspired by Brotato and other arena survival games.
 
+## No Warranty
+
+This project and all included materials are provided "as is" without warranty of any kind, express or implied, including but not limited to the warranties of merchantability, fitness for a particular purpose, and non-infringement. Use at your own risk.

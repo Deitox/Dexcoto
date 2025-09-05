@@ -175,3 +175,4 @@ static func _roll_weapon_tier(wave: int) -> int:
 	if r < p2:
 		return 2
 	return 1
+

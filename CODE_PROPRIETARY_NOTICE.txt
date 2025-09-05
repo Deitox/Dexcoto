@@ -1,0 +1,13 @@
+Dexcoto Code License Notice (Proprietary)
+
+Unless expressly stated otherwise, all game source code and content in this repository
+that implement the shipped game (including files under `scripts/`, `scenes/`, and
+`project.godot`), as well as any game binaries, are proprietary and not open-source.
+
+Your rights to use the game and its content are governed by `EULA.txt` and
+`ASSET-LICENSE.md`. The Modding SDK documentation and templates are licensed separately
+under MIT (see `LICENSE-SDK.txt`) solely for the purpose of creating mods for Dexcoto.
+
+If you intend to open-source portions of the game in the future, add an explicit
+license file covering those parts and reference it from `README.md`.
+
