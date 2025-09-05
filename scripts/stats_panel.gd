@@ -178,8 +178,8 @@ func _ensure_host() -> void:
 		return
 	if has_node("Host"):
 		_host = get_node("Host")
-		# Add slight vertical spacing between rows
-		_host.add_theme_constant_override("separation", 6)
+		# Add vertical spacing between section blocks
+		_host.add_theme_constant_override("separation", 8)
 		return
 	# Fallback: create dynamically if the Host node is missing
 	_host = VBoxContainer.new()
@@ -205,6 +205,11 @@ func _add_header(title: String, col: Color) -> void:
 	_host.add_child(l)
 
 func _add_section_header(title: String, hex: String) -> void:
+	# Add a small spacer before each section (except when empty)
+	if _host.get_child_count() > 0:
+		var spacer := Control.new()
+		spacer.custom_minimum_size = Vector2(0, 6)
+		_host.add_child(spacer)
 	var l := Label.new()
 	l.text = title
 	l.add_theme_color_override("font_color", Color.from_string("#" + hex, Color.WHITE))
@@ -212,6 +217,7 @@ func _add_section_header(title: String, hex: String) -> void:
 	_host.add_child(l)
 	# Thin separator for readability
 	var sep := HSeparator.new()
+	sep.custom_minimum_size = Vector2(0, 2)
 	sep.modulate = Color(1,1,1,0.35)
 	_host.add_child(sep)
 
@@ -219,8 +225,8 @@ func _add_grid() -> GridContainer:
 	var g := GridContainer.new()
 	g.columns = 2
 	g.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	g.add_theme_constant_override("h_separation", 10)
-	g.add_theme_constant_override("v_separation", 2)
+	g.add_theme_constant_override("h_separation", 12)
+	g.add_theme_constant_override("v_separation", 4)
 	_host.add_child(g)
 	return g
 
@@ -232,7 +238,7 @@ func _add_kv(grid: GridContainer, key: String, val: String, val_color: Color = C
 	lk.custom_minimum_size = Vector2(140, 0)
 	var lv := Label.new()
 	lv.text = val
-	lv.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	lv.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	lv.add_theme_color_override("font_color", val_color)
 	# Allow value column to expand; rely on default wrapping/clipping
 	lv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
