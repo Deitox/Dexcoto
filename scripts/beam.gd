@@ -40,13 +40,19 @@ func activate(pos: Vector2, dir: Vector2, dmg: int, col: Color, effect: Dictiona
 	if hit and hit.has("position"):
 		end_point = Vector2(hit["position"])
 		var collider = hit.get("collider")
-		if collider and collider.is_in_group("enemies") and collider.has_method("take_damage"):
+		var target = collider
+		# If we hit a child like an enemy Hitbox (Area2D), resolve up to the enemy body.
+		if target and not target.is_in_group("enemies") and target.get_parent():
+			var p = target.get_parent()
+			if p and p.is_in_group("enemies"):
+				target = p
+		if target and target.is_in_group("enemies") and target.has_method("take_damage"):
 			# Attribute source for on-kill stacking
 			if _effect is Dictionary and _effect.has("source"):
-				collider.set("last_damage_source", _effect["source"])
-			collider.take_damage(_damage)
-			if _effect is Dictionary and _effect.size() > 0 and collider.has_method("apply_elemental_effect"):
-				collider.apply_elemental_effect(_effect, _damage, end_point)
+				target.set("last_damage_source", _effect["source"])
+			target.take_damage(_damage)
+			if _effect is Dictionary and _effect.size() > 0 and target.has_method("apply_elemental_effect"):
+				target.apply_elemental_effect(_effect, _damage, end_point)
 	_set_line(Vector2.ZERO, (end_point - global_position))
 	_time = 0.0
 	_active = true
