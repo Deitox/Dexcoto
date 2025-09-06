@@ -23,7 +23,7 @@ Tiny Godot 4 arena-survivor prototype. Move, auto-aim at the nearest enemy, and 
 ## Controls
 
 - Move: WASD or Arrow Keys (`ui_left`, `ui_right`, `ui_up`, `ui_down`).
-- Pause/Resume: Esc.
+- Pause: Esc. While in shop/upgrade/character select (already paused), Esc opens the Pause overlay without resuming the game. Closing the overlay returns to that paused UI. From gameplay, Esc toggles pause normally.
 - Intermissions: use the mouse to choose upgrades and buy items.
 - Shop: left-click to buy, right-click an offer to lock/unlock it, use Reroll to refresh unlocked offers.
 
@@ -38,12 +38,21 @@ Tiny Godot 4 arena-survivor prototype. Move, auto-aim at the nearest enemy, and 
 
 - Weapons (up to 6 slots): Auto-fire toward the nearest enemy. Three of the same weapon at the same tier merge into one of the next tier. Higher tiers increase damage and fire rate; every 3 tiers adds a projectile.
 - Items: Stackable effects like attack speed, regen, lifesteal, +projectiles, currency gain, projectile speed, max HP, and placing turrets for the next wave.
-- Turrets: Stationary allies purchased in the shop. If too many accumulate, groups of 3 same-tier turrets merge up to keep counts reasonable.
-- Projectiles & Beams: Excessive projectile counts are capped; overflow converts into proportional damage. Extremely fast shots convert into short-lived beams to reduce object churn.
+- Turrets: Stationary allies purchased in the shop or spawned by certain weapons on kill. If too many accumulate, groups of 3 same-tier turrets merge up to keep counts reasonable. Turret damage scales with your Turret Power stat.
+- Projectiles & Beams: Excessive projectile counts are capped; overflow converts into proportional damage. Very fast shots convert into short-lived beams to reduce object churn. The beam threshold is configurable in `scripts/bullet_pool.gd`.
 - Enemies & Boss: Enemies scale by tier; bosses scale by wave. Kills grant score, XP, and currency based on enemy power.
 - Character Select: Choose a starter at the beginning (from the weapon list), which sets your color and initial weapon.
 - HUD & Shop UX: Weapon HUD shows tier coloring; new/merged weapons get temporary highlights. Shop buttons color by rarity/tier; right-click locks offers. Reroll costs 5 and preserves locked, unsold offers.
-- Elemental System: Elemental weapons scale with your Elemental Power stat (upgrades). Fire can Ignite (DoT), Cryo can Freeze (briefly immobilize), Shock can Arc to nearby enemies, and Void can inflict Vulnerable (take increased damage) - chances and potency grow with Elemental Power.
+- Elemental System: Elemental weapons scale with your Elemental Power stat (upgrades). Fire can Ignite (DoT), Cryo can Freeze (briefly immobilize), Shock can Arc to nearby enemies, and Void can inflict Vulnerable (take increased damage) — chances and potency grow with Elemental Power.
+
+### Kill-Stacking Weapons
+
+Some weapons grant stacking bonuses on kill. Higher tiers require fewer kills for each stack:
+
+- Berserker: kills grant +2% Damage per stack.
+- Tempo: kills grant +2% Attack Speed per stack.
+- Bulwark: kills grant +3 Max HP per stack.
+- Constructor: kills spawn a Turret near the player after a few kills; benefits from Turret Power.
 
 ## Performance Notes
 
@@ -54,10 +63,11 @@ Tiny Godot 4 arena-survivor prototype. Move, auto-aim at the nearest enemy, and 
 
 ## Content Overview
 
-- Weapons (selection): Pistol, SMG, Shotgun, Rifle, Minigun, Cannon, Laser, Railgun, Flamethrower (Fire), Cryo Blaster (Cryo), Shock Rifle (Shock), Void Projector (Void), Boomerang, Crossbow, Burst Pistol, Splitter, Cannon Mk.II.
-- Items (selection): Money Charm, Turret, Scope, Overcharger, Adrenaline, Lifesteal Charm, Boots, Caffeine, Ammo Belt, Aerodynamics, Protein Bar, Medkit, Greed Token, Vampiric Orb, Power Core, Stabilizer.
-- Upgrades: Weighted by rarity (Common through Legendary). Categories include Attack Speed, Damage, Move Speed, Max HP, Projectile Speed, Regeneration, and +Projectiles.
-- Elemental Power: New upgrade that boosts elemental weapons' damage and effect chance/potency.
+- Weapons (selection): Pistol, SMG, Shotgun, Rifle, Minigun, Cannon, Laser, Railgun, Flamethrower (Fire), Cryo Blaster (Cryo), Shock Rifle (Shock), Void Projector (Void), Boomerang, Crossbow, Burst Pistol, Splitter, Cannon Mk.II, Berserker (stacking damage), Tempo (stacking attack speed), Bulwark (stacking max HP), Constructor (spawns turrets on kill).
+- Items (selection): Money Charm, Turret, Scope, Overcharger, Adrenaline, Lifesteal Charm, Boots, Caffeine, Ammo Belt, Aerodynamics, Protein Bar, Medkit, Greed Token, Vampiric Orb, Power Core, Stabilizer, Toolkit (+Turret Power), Engineer Manual (+Turret Power).
+- Upgrades: Weighted by rarity (Common through Legendary). Categories include Attack Speed, Damage, Move Speed, Max HP, Projectile Speed, Regeneration, +Projectiles, Elemental Power, and Turret Power.
+- Elemental Power: Boosts elemental weapons' damage and effect chance/potency.
+- Turret Power: Boosts turret damage.
 
 ## Project Structure
 
@@ -84,6 +94,7 @@ Tiny Godot 4 arena-survivor prototype. Move, auto-aim at the nearest enemy, and 
 
 - Enemies (in `scripts/main.gd`): `SOFT_CAP_ENEMIES`, `MAX_ENEMIES`, `GROUP_BASE_DELAY`, `GROUP_STAGGER`, `GROUP_GAP_MIN`, `GROUP_GAP_MAX`, and `wave_time`.
 - Projectiles (in `scripts/player.gd`): `MAX_TOTAL_PROJECTILES`, `MAX_PROJECTILE_BONUS`, `MIN_WEAPON_INTERVAL`, `MAX_ATTACK_SPEED_MULT`; projectile overload soft cap ~200.
+- Beams (in `scripts/bullet_pool.gd`): `SPEED_BEAM_THRESHOLD` controls when bullets convert to beams.
 
 ## Weapon Fields
 
@@ -95,6 +106,7 @@ Tiny Godot 4 arena-survivor prototype. Move, auto-aim at the nearest enemy, and 
 
 - Windows import/file locking issues: try `tools/fix_lock.ps1`.
 - Console message "[Guard] Cancelled abnormal move": defensive anti-teleport check; safe to ignore.
+- Strange degree symbol in old text (e.g., "-2A� spread"): run `python fix_degree_symbol.py` to replace with the intended "-2° spread" across the repo.
 
 ## Dev Notes
 

@@ -39,3 +39,11 @@ func _offer_gui_input(event: InputEvent, index: int) -> void:
 		var main := get_tree().current_scene
 		if main and main.has_method("_on_shop_toggle_lock"):
 			main._on_shop_toggle_lock(index)
+
+func _input(event: InputEvent) -> void:
+	# Allow opening the Pause panel via ESC while the shop is visible (tree paused)
+	if event.is_action_pressed("ui_cancel"):
+		var main := get_tree().current_scene
+		if main and main.has_method("_toggle_pause"):
+			main._toggle_pause()
+		accept_event()

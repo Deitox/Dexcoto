@@ -187,7 +187,15 @@ func _toggle_pause() -> void:
 	if pause_panel == null:
 		return
 	var now_paused := get_tree().paused
+	# If already paused due to another UI (shop/upgrade/character), toggle only the pause panel
+	# without changing the paused state. Otherwise, toggle pause normally.
+	var ui_is_modal := _ui_modal_active()
 	if now_paused:
+		if ui_is_modal:
+			pause_panel.visible = not pause_panel.visible
+			_update_stats_panel_visibility()
+			return
+		# No modal UI: unpause
 		get_tree().paused = false
 		pause_panel.visible = false
 		_update_stats_panel_visibility()
@@ -197,6 +205,11 @@ func _toggle_pause() -> void:
 		_update_stats_panel_visibility()
 
 func _on_pause_resume() -> void:
+	# If a modal UI (shop/upgrade/character) is active, only hide the pause panel and remain paused.
+	if _ui_modal_active():
+		pause_panel.visible = false
+		_update_stats_panel_visibility()
+		return
 	get_tree().paused = false
 	pause_panel.visible = false
 	_update_stats_panel_visibility()
@@ -214,6 +227,15 @@ func _on_spawn_timer_timeout() -> void:
 
 func _on_wave_timer_timeout() -> void:
 	begin_intermission()
+
+func _ui_modal_active() -> bool:
+	if shop_panel and shop_panel.visible:
+		return true
+	if upgrade_panel and upgrade_panel.visible:
+		return true
+	if character_panel and character_panel.visible:
+		return true
+	return false
 
 
 func _active_enemies_count() -> int:
