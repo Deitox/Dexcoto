@@ -54,7 +54,7 @@ signal weapon_merged(id: String, tier: int, index: int)
 # Performance caps
 const MAX_TOTAL_PROJECTILES: int = 10
 const MAX_PROJECTILE_BONUS: int = 10 # cap on player.projectiles_per_shot
-const MAX_ATTACK_SPEED_MULT: float = 4.0
+const MAX_ATTACK_SPEED_MULT: float = 3.0
 const MIN_WEAPON_INTERVAL: float = 0.08
 
 func _ready() -> void:
@@ -242,12 +242,7 @@ func apply_upgrade(upg: Dictionary) -> void:
 	var v: Variant = upg.get("value")
 	match t:
 		"attack_speed":
-			attack_speed_mult *= (1.0 + float(v))
-			if attack_speed_mult > MAX_ATTACK_SPEED_MULT:
-				var overflow_factor: float = attack_speed_mult / MAX_ATTACK_SPEED_MULT
-				attack_speed_mult = MAX_ATTACK_SPEED_MULT
-				damage_mult *= overflow_factor
-				overflow_damage_mult_from_attack_speed *= overflow_factor
+			apply_attack_speed_multiplier(1.0 + float(v))
 		"damage":
 			damage_mult *= (1.0 + float(v))
 		"move_speed":
@@ -276,6 +271,16 @@ func apply_upgrade(upg: Dictionary) -> void:
 			turret_power_mult *= (1.0 + float(v))
 		_:
 			pass
+
+func apply_attack_speed_multiplier(mult: float) -> void:
+	if mult <= 0.0:
+		return
+	attack_speed_mult *= mult
+	if attack_speed_mult > MAX_ATTACK_SPEED_MULT:
+		var overflow_factor: float = attack_speed_mult / MAX_ATTACK_SPEED_MULT
+		attack_speed_mult = MAX_ATTACK_SPEED_MULT
+		damage_mult *= overflow_factor
+		overflow_damage_mult_from_attack_speed *= overflow_factor
 
 func can_accept_weapon(w: Dictionary) -> bool:
 	if String(w.get("kind", "")) != "weapon":

@@ -80,8 +80,8 @@ const BOSS_SCENE: PackedScene = preload("res://scenes/Boss.tscn")
 var _hud_highlight: Dictionary = {}
 
 # Performance caps
-const SOFT_CAP_ENEMIES: int = 40
-const MAX_ENEMIES: int = 60
+const SOFT_CAP_ENEMIES: int = 80
+const MAX_ENEMIES: int = 120
 
 # Spawn grouping and telegraphing
 const GROUP_BASE_DELAY: float = 0.6
@@ -541,7 +541,35 @@ func open_shop() -> void:
 func _generate_shop_offers() -> void:
 	# Generate a new set, but preserve any locked, unsold items in their slots.
 	var prev: Array[Dictionary] = shop_offers
-	var generated: Array[Dictionary] = ShopLib.generate_offers(3, wave)
+	# Build player-aware context to bias offers toward owned gear and families
+	var ctx: Dictionary = {}
+	if player != null:
+		var owned_w: Array[String] = []
+		for w in player.weapons:
+			var wid: String = String(w.get("id",""))
+			if wid != "" and not owned_w.has(wid):
+				owned_w.append(wid)
+		var owned_i: Array[String] = []
+		var counts: Dictionary = player.get("item_counts") if player.has_method("get") else {}
+		for k in counts.keys():
+			var id: String = String(k)
+			if int(counts[k]) > 0 and not owned_i.has(id):
+				owned_i.append(id)
+		var fams: Array[String] = []
+		# Families from owned weapons
+		for wid2 in owned_w:
+			var we := ShopLib.get_weapon_by_id(String(wid2))
+			if we.size() > 0:
+				for f in ShopLib.weapon_families(we):
+					if not fams.has(f):
+						fams.append(f)
+		# Families from owned items
+		for iid in owned_i:
+			for f2 in ShopLib.item_families_by_id(String(iid)):
+				if not fams.has(f2):
+					fams.append(f2)
+		ctx = {"owned_weapon_ids": owned_w, "owned_item_ids": owned_i, "owned_families": fams}
+	var generated: Array[Dictionary] = ShopLib.generate_offers(3, wave, ctx)
 	# Initialize flags on generated offers
 	for i in range(generated.size()):
 		generated[i]["sold"] = false
@@ -718,7 +746,10 @@ func _on_shop_buy(index: int) -> void:
 					pass
 				"overcharger":
 					if player:
-						player.attack_speed_mult *= 1.15
+						if player.has_method("apply_attack_speed_multiplier"):
+							player.apply_attack_speed_multiplier(1.15)
+						else:
+							player.attack_speed_mult *= 1.15
 						player.add_item("overcharger")
 				"adrenaline":
 					if player:
@@ -734,7 +765,10 @@ func _on_shop_buy(index: int) -> void:
 						player.add_item("boots")
 				"caffeine":
 					if player:
-						player.attack_speed_mult *= 1.10
+						if player.has_method("apply_attack_speed_multiplier"):
+							player.apply_attack_speed_multiplier(1.10)
+						else:
+							player.attack_speed_mult *= 1.10
 						player.add_item("caffeine")
 				"ammo_belt":
 					# Deprecated: bonus projectiles now only come from weapon tiers

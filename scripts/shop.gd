@@ -184,29 +184,156 @@ static func rarity_color_hex(r: String) -> String:
 	# Returns hex without leading '#'
 	return rarity_color(r).to_html(false)
 
-static func generate_offers(count: int, wave: int = 1) -> Array[Dictionary]:
+static func _id_to_item_families() -> Dictionary:
+	# Lightweight family tags to bias shop RNG. Not exhaustive; just enough to create synergies.
+	# Families used: elemental, explosive, turret, attack_speed, projectile_speed, economy, lifesteal, regen, hp, damage
+	return {
+		# Economy
+		"money_charm": ["economy"],
+		"greed_token": ["economy"],
+		# Core combat
+		"overcharger": ["attack_speed"],
+		"caffeine": ["attack_speed"],
+		"aerodynamics": ["projectile_speed"],
+		"power_core": ["damage"],
+		# Survivability
+		"protein_bar": ["hp"],
+		"medkit": ["regen"],
+		"adrenaline": ["regen"],
+		"lifesteal_charm": ["lifesteal"],
+		"vampiric_orb": ["lifesteal"],
+		# Turret ecosystem
+		"turret": ["turret"],
+		"toolkit": ["turret"],
+		"engineer_manual": ["turret"],
+		"turret_servos": ["turret", "projectile_speed"],
+		"gyro_stabilizer": ["turret", "projectile_speed"],
+		# Elemental power set
+		"elemental_amp": ["elemental"],
+		"elemental_catalyst": ["elemental"],
+		"elemental_core": ["elemental"],
+		"arcanum": ["elemental"],
+		# Cross synergies
+		"volatile_rounds": ["explosive"],
+		"elemental_fuse": ["elemental"],
+		"payload_catalyst": ["explosive", "elemental"],
+		"superconductor": ["elemental"],
+		# Explosive power set
+		"blast_caps": ["explosive"],
+		"demolition_kit": ["explosive"],
+		"payload_upgrade": ["explosive"],
+		"warhead": ["explosive"],
+	}
+
+static func weapon_families(w: Dictionary) -> Array[String]:
+	var fams: Array[String] = []
+	if bool(w.get("explosive", false)):
+		fams.append("explosive")
+	if w.has("element"):
+		fams.append("elemental")
+	# Stacking turret spawns
+	if w.has("stack") and String((w["stack"] as Dictionary).get("type","")) == "turret_spawn":
+		fams.append("turret")
+	return fams
+
+static func item_families_by_id(id: String) -> Array[String]:
+	var map := _id_to_item_families()
+	if not map.has(id):
+		return [] as Array[String]
+	var v = map[id]
+	if v is Array:
+		var out: Array[String] = []
+		for s in (v as Array):
+			out.append(String(s))
+		return out
+	return [] as Array[String]
+
+static func get_weapon_by_id(id: String) -> Dictionary:
+	for w in WEAPONS:
+		if String(w.get("id","")) == id:
+			return w
+	return {}
+
+static func get_item_by_id(id: String) -> Dictionary:
+	for it in ITEMS:
+		if String(it.get("id","")) == id:
+			return it
+	return {}
+
+static func generate_offers(count: int, wave: int = 1, context: Dictionary = {}) -> Array[Dictionary]:
+	# Context fields (all optional):
+	#   owned_weapon_ids: Array[String]
+	#   owned_item_ids: Array[String]
+	#   owned_families: Array[String]  (precomputed from inventory)
 	var pool: Array[Dictionary] = []
 	pool.append_array(weapons())
 	pool.append_array(items())
 	var offers: Array[Dictionary] = []
 	if pool.is_empty() or count <= 0:
 		return offers
-	# Cheaper sampling: shuffle once and take the first N
-	pool.shuffle()
-	var take: int = min(count, pool.size())
-	for i in range(take):
-		var base: Dictionary = pool[i]
+
+	var owned_weapons: Array[String] = context.get("owned_weapon_ids", [])
+	var owned_items: Array[String] = context.get("owned_item_ids", [])
+	var owned_fams: Array[String] = context.get("owned_families", [])
+
+	var weights: Array[float] = []
+	weights.resize(pool.size())
+
+	for i in range(pool.size()):
+		var e: Dictionary = pool[i]
+		var w: float = 1.0
+		var kind: String = String(e.get("kind",""))
+		var id: String = String(e.get("id",""))
+		var fams: Array[String] = []
+		if kind == "weapon":
+			fams = weapon_families(e)
+			if owned_weapons.has(id):
+				w *= 1.15
+		elif kind == "item":
+			fams = item_families_by_id(id)
+			if owned_items.has(id):
+				w *= 1.12
+		# Synergy boost for shared families (cap modestly)
+		var shared := 0
+		for f in fams:
+			if owned_fams.has(f):
+				shared += 1
+		if shared > 0:
+			w *= min(1.30, 1.08 * float(shared))
+		weights[i] = w
+
+	# Weighted sampling without replacement
+	var available_idx: Array[int] = []
+	for i in range(pool.size()):
+		available_idx.append(i)
+
+	var picks: int = min(count, pool.size())
+	for _i in range(picks):
+		# compute total
+		var total: float = 0.0
+		for idx in available_idx:
+			total += max(0.0001, weights[idx])
+		var r: float = randf() * total
+		var acc: float = 0.0
+		var chosen_idx: int = available_idx[0]
+		for idx in available_idx:
+			acc += max(0.0001, weights[idx])
+			if r <= acc:
+				chosen_idx = idx
+				break
+		# produce offer
+		var base: Dictionary = pool[chosen_idx]
 		var offer: Dictionary = (base.duplicate(true) as Dictionary)
-		# Chance to roll higher tier for weapons increases with wave
 		if String(offer.get("kind","")) == "weapon":
 			var t: int = _roll_weapon_tier(wave)
 			if t > 1:
 				offer["tier"] = t
-				# Scale cost for higher tier
 				var base_cost: int = int(offer.get("cost", 10))
 				var mult: float = pow(1.5, float(t - 1))
 				offer["cost"] = int(round(base_cost * mult))
 		offers.append(offer)
+		# remove from available
+		available_idx.erase(chosen_idx)
 	return offers
 
 static func _roll_weapon_tier(wave: int) -> int:
