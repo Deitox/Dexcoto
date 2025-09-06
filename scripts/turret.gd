@@ -116,13 +116,20 @@ func _shoot(pos: Vector2) -> void:
 	if current > soft_cap:
 		scale_factor = clamp(float(soft_cap) / float(current), 0.3, 1.0)
 	var dmg := int(round(damage * (1.0 / scale_factor)))
+	# Scale by player's turret power stat if present
+	var player = get_tree().get_first_node_in_group("player")
+	if player and player.has_method("get"):
+		var tpm: float = float(player.get("turret_power_mult"))
+		if tpm > 0.0:
+			dmg = int(round(float(dmg) * max(0.1, tpm)))
+	var fx: Dictionary = {"source": {"kind":"turret"}}
 	if bullet_pool and bullet_pool.has_method("spawn_bullet"):
-		bullet_pool.call("spawn_bullet", global_position + dir * 16.0, dir, speed, dmg, color, 2.0)
+		bullet_pool.call("spawn_bullet", global_position + dir * 16.0, dir, speed, dmg, color, 2.0, fx)
 	else:
 		var b = bullet_scene.instantiate()
 		get_tree().current_scene.add_child(b)
 		if b.has_method("activate"):
-			b.call("activate", global_position + dir * 16.0, dir, speed, dmg, color, 2.0, null)
+			b.call("activate", global_position + dir * 16.0, dir, speed, dmg, color, 2.0, null, fx)
 		else:
 			b.global_position = global_position + dir * 16.0
 			b.direction = dir

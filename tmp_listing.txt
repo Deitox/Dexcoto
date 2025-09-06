@@ -1,0 +1,232 @@
+   1: class_name ShopDB
+   2: extends Node
+   3: 
+   4: # Central catalogs to avoid reconstructing arrays on each call.
+   5: # Note: These are treated as read-only. Callers should not mutate entries.
+   6: const WEAPONS: Array[Dictionary] = [
+   7: 		{"kind":"weapon","id":"pistol","name":"Pistol","cost":8,"rarity":"Common",
+   8: 		 "desc":"Balanced sidearm.",
+   9: 		 "fire_interval":0.35, "damage":10, "speed":500, "projectiles":1, "color": Color(1,1,0.2)},
+  10: 		{"kind":"weapon","id":"smg","name":"SMG","cost":10,"rarity":"Common",
+  11: 		 "desc":"Fast, low damage.",
+  12: 		 "fire_interval":0.18, "damage":6, "speed":520, "projectiles":1, "color": Color(0.2,1,1)},
+  13: 		{"kind":"weapon","id":"shotgun","name":"Shotgun","cost":14,"rarity":"Uncommon",
+  14: 		 "desc":"Slow, fires 3 projectiles.",
+  15: 		 "fire_interval":0.60, "damage":12, "speed":460, "projectiles":3, "color": Color(1,0.5,0.3)},
+  16: 		{"kind":"weapon","id":"rifle","name":"Rifle","cost":12,"rarity":"Uncommon",
+  17: 		 "desc":"Hard-hitting mid fire rate.",
+  18: 		 "fire_interval":0.45, "damage":16, "speed":560, "projectiles":1, "color": Color(0.8,0.9,1)},
+  19: 		{"kind":"weapon","id":"minigun","name":"Minigun","cost":16,"rarity":"Rare",
+  20: 		 "desc":"Very fast, low damage.",
+  21: 		 "fire_interval":0.10, "damage":4, "speed":520, "projectiles":1, "color": Color(0.7,0.7,1)},
+  22: 		{"kind":"weapon","id":"cannon","name":"Cannon","cost":18,"rarity":"Epic",
+  23: 		 "desc":"Very slow, huge damage.",
+  24: 		 "fire_interval":0.90, "damage":28, "speed":450, "projectiles":1, "color": Color(1,0.8,0.5)},
+  25: 		# New weapons
+  26: 		{"kind":"weapon","id":"laser","name":"Laser","cost":15,"rarity":"Uncommon",
+  27: 		 "desc":"High speed, moderate damage.",
+  28: 		 "fire_interval":0.40, "damage":12, "speed":900, "projectiles":1, "color": Color(1,1,0.6)},
+  29: 		{"kind":"weapon","id":"railgun","name":"Railgun","cost":22,"rarity":"Epic",
+  30: 		 "desc":"Extremely fast shots (often beam).", 
+  31: 		 "fire_interval":0.80, "damage":30, "speed":1200, "projectiles":1, "color": Color(0.9,0.9,1)},
+  32: 		{"kind":"weapon","id":"flamethrower","name":"Flamethrower","cost":16,"rarity":"Rare",
+  33: 		 "desc":"Rapid stream. Fire element; chance to Ignite.",
+  34: 		 "fire_interval":0.08, "damage":3, "speed":420, "projectiles":1, "color": Color(1,0.6,0.2),
+  35: 		 "element":"fire", "element_proc":0.25, "ignite_factor":0.4, "ignite_duration":2.0},
+  36: 		{"kind":"weapon","id":"boomerang","name":"Boomerang","cost":14,"rarity":"Uncommon",
+  37: 		 "desc":"Wide spread of 2 projectiles.",
+  38: 		 "fire_interval":0.55, "damage":10, "speed":520, "projectiles":2, "color": Color(0.8,1,0.8)},
+  39: 		{"kind":"weapon","id":"crossbow","name":"Crossbow","cost":13,"rarity":"Uncommon",
+  40: 		 "desc":"Slow but accurate bolt.",
+  41: 		 "fire_interval":0.65, "damage":18, "speed":540, "projectiles":1, "color": Color(0.9,0.8,0.7)},
+  42: 		{"kind":"weapon","id":"burst","name":"Burst Pistol","cost":12,"rarity":"Common",
+  43: 		 "desc":"Fires 2 projectiles per shot.",
+  44: 		 "fire_interval":0.42, "damage":8, "speed":520, "projectiles":2, "color": Color(0.7,1,0.9)},
+  45: 		{"kind":"weapon","id":"splitter","name":"Splitter","cost":18,"rarity":"Rare",
+  46: 		 "desc":"3 projectiles, moderate speed.",
+  47: 		 "fire_interval":0.50, "damage":11, "speed":540, "projectiles":3, "color": Color(0.7,0.9,1)},
+  48: 		{"kind":"weapon","id":"cannon_mk2","name":"Cannon Mk.II","cost":24,"rarity":"Legendary",
+  49: 		 "desc":"Very slow, massive damage.",
+  50: 		 "fire_interval":1.10, "damage":40, "speed":460, "projectiles":1, "color": Color(1,0.9,0.6)},
+  51: 		# Elemental weapons
+  52: 		{"kind":"weapon","id":"cryo_blaster","name":"Cryo Blaster","cost":16,"rarity":"Rare",
+  53: 		 "desc":"Cryo element. Chance to Freeze.",
+  54: 		 "fire_interval":0.42, "damage":12, "speed":540, "projectiles":1, "color": Color(0.6,0.9,1.0),
+  55: 		 "element":"cryo", "element_proc":0.25, "freeze_duration":0.9},
+  56: 		{"kind":"weapon","id":"shock_rifle","name":"Shock Rifle","cost":18,"rarity":"Rare",
+  57: 		 "desc":"Shock element. On hit, arcs to nearby foes.",
+  58: 		 "fire_interval":0.38, "damage":11, "speed":560, "projectiles":1, "color": Color(0.8,1.0,1.0),
+  59: 		 "element":"shock", "element_proc":0.35, "arc_count":2, "arc_radius":140.0, "arc_factor":0.5},
+  60: 		{"kind":"weapon","id":"void_projector","name":"Void Projector","cost":20,"rarity":"Epic",
+  61: 		 "desc":"Void element. Applies Vulnerable debuff.",
+  62: 		 "fire_interval":0.55, "damage":16, "speed":600, "projectiles":1, "color": Color(0.8,0.5,1.0),
+  63: 		 "element":"void", "element_proc":0.30, "vuln":0.20, "vuln_duration":2.5},
+  64: 		# Explosive weapons
+  65: 		{"kind":"weapon","id":"grenade_launcher","name":"Grenade Launcher","cost":18,"rarity":"Rare",
+  66: 		 "desc":"Explosive rounds. AoE on hit.",
+  67: 		 "fire_interval":0.60, "damage":18, "speed":480, "projectiles":1, "color": Color(1.0,0.8,0.5),
+  68: 		 "explosive": true, "expl_radius": 120.0, "expl_factor": 0.9},
+  69: 		{"kind":"weapon","id":"rocket_launcher","name":"Rocket Launcher","cost":22,"rarity":"Epic",
+  70: 		 "desc":"High damage explosive rockets.",
+  71: 		 "fire_interval":0.85, "damage":26, "speed":520, "projectiles":1, "color": Color(1.0,0.9,0.6),
+  72: 		 "explosive": true, "expl_radius": 160.0, "expl_factor": 1.0},
+  73: 		{"kind":"weapon","id":"cluster_bomb","name":"Cluster Bomb","cost":24,"rarity":"Legendary",
+  74: 		 "desc":"Explodes in a large radius.",
+  75: 		 "fire_interval":0.95, "damage":22, "speed":460, "projectiles":1, "color": Color(1.0,0.85,0.6),
+  76: 		 "explosive": true, "expl_radius": 200.0, "expl_factor": 0.8},
+  77: 		# Stacking-kill weapons
+  78: 		{"kind":"weapon","id":"berserker","name":"Berserker","cost":18,"rarity":"Rare",
+  79: 		 "desc":"Kills grant +2% Damage per stack (fewer kills at higher tier).",
+  80: 		 "fire_interval":0.40, "damage":10, "speed":520, "projectiles":1, "color": Color(1.0,0.4,0.4),
+  81: 		 "stack": {"type":"damage","per_stack":0.02,"base_kills":6}},
+  82: 		{"kind":"weapon","id":"tempo","name":"Tempo","cost":18,"rarity":"Rare",
+  83: 		 "desc":"Kills grant +2% Attack Speed per stack (fewer kills at higher tier).",
+  84: 		 "fire_interval":0.30, "damage":8, "speed":540, "projectiles":1, "color": Color(0.6,1.0,0.6),
+  85: 		 "stack": {"type":"attack_speed","per_stack":0.02,"base_kills":6}},
+  86: 		{"kind":"weapon","id":"bulwark","name":"Bulwark","cost":20,"rarity":"Epic",
+  87: 		 "desc":"Kills grant +3 Max HP per stack (fewer kills at higher tier).",
+  88: 		 "fire_interval":0.55, "damage":14, "speed":500, "projectiles":1, "color": Color(0.6,0.8,1.0),
+  89: 		 "stack": {"type":"max_hp","per_stack":3,"base_kills":7}},
+  90: 		# Constructor-style weapon that spawns turrets on kill stacks
+  91: 		{"kind":"weapon","id":"constructor","name":"Constructor","cost":14,"rarity":"Uncommon",
+  92: 		 "desc":"Kills spawn turrets after a few kills (fewer kills at higher tier).",
+  93: 		 "fire_interval":0.45, "damage":9, "speed":520, "projectiles":1, "color": Color(0.7,1.0,0.3),
+  94: 		 "stack": {"type":"turret_spawn","per_stack":1,"base_kills":4}},
+  95: ]
+  96: 
+  97: const ITEMS: Array[Dictionary] = [
+  98: 	]
+  99: 
+ 100: const ITEMS: Array[Dictionary] = [
+ 101: 		{"kind":"item","id":"money_charm","name":"Money Charm","cost":12,"rarity":"Uncommon",
+ 102: 		 "desc":"Earn 20% more currency."},
+ 103: 		{"kind":"item","id":"turret","name":"Turret","cost":18,"rarity":"Rare",
+ 104: 		 "desc":"Place a stationary turret next wave."},
+ 105: 		{"kind":"item","id":"scope","name":"Scope","cost":10,"rarity":"Uncommon",
+ 106: 		 "desc":"+1 projectile to all weapons."},
+ 107: 		{"kind":"item","id":"overcharger","name":"Overcharger","cost":14,"rarity":"Rare",
+ 108: 		 "desc":"+15% attack speed."},
+ 109: 		{"kind":"item","id":"adrenaline","name":"Adrenaline","cost":10,"rarity":"Common",
+ 110: 		 "desc":"+0.5 HP regen/s."},
+ 111: 		{"kind":"item","id":"lifesteal_charm","name":"Lifesteal Charm","cost":12,"rarity":"Uncommon",
+ 112: 		 "desc":"Heal 1 HP per kill."},
+ 113: 		# New items
+ 114: 		{"kind":"item","id":"boots","name":"Boots","cost":10,"rarity":"Common",
+ 115: 		 "desc":"+10% move speed."},
+ 116: 		{"kind":"item","id":"caffeine","name":"Caffeine","cost":12,"rarity":"Uncommon",
+ 117: 		 "desc":"+10% attack speed."},
+ 118: 		{"kind":"item","id":"ammo_belt","name":"Ammo Belt","cost":12,"rarity":"Uncommon",
+ 119: 		 "desc":"+1 projectile to all weapons."},
+ 120: 		{"kind":"item","id":"aerodynamics","name":"Aerodynamics","cost":10,"rarity":"Common",
+ 121: 		 "desc":"+20% projectile speed."},
+ 122: 		{"kind":"item","id":"protein_bar","name":"Protein Bar","cost":10,"rarity":"Common",
+ 123: 		 "desc":"+15 Max HP."},
+ 124: 		{"kind":"item","id":"medkit","name":"Medkit","cost":12,"rarity":"Uncommon",
+ 125: 		 "desc":"+1.0 HP regen/s."},
+ 126: 		{"kind":"item","id":"greed_token","name":"Greed Token","cost":14,"rarity":"Rare",
+ 127: 		 "desc":"+15% currency gain."},
+ 128: 		{"kind":"item","id":"vampiric_orb","name":"Vampiric Orb","cost":16,"rarity":"Rare",
+ 129: 		 "desc":"+1 HP per kill."},
+ 130: 		{"kind":"item","id":"power_core","name":"Power Core","cost":16,"rarity":"Rare",
+ 131: 		 "desc":"+10% damage."},
+ 132: 		{"kind":"item","id":"stabilizer","name":"Stabilizer","cost":10,"rarity":"Uncommon",
+ 133: 		 "desc":"-2° spread (tighter shots)."},
+ 134: 		# Elemental Power items
+ 135: 		{"kind":"item","id":"elemental_amp","name":"Elemental Amplifier","cost":14,"rarity":"Uncommon",
+ 136: 		 "desc":"+10% Elemental Power."},
+ 137: 		{"kind":"item","id":"elemental_catalyst","name":"Elemental Catalyst","cost":18,"rarity":"Rare",
+ 138: 		 "desc":"+20% Elemental Power."},
+ 139: 		{"kind":"item","id":"elemental_core","name":"Elemental Core","cost":22,"rarity":"Epic",
+ 140: 		 "desc":"+30% Elemental Power."},
+ 141: 		{"kind":"item","id":"arcanum","name":"Arcanum","cost":26,"rarity":"Legendary",
+ 142: 		 "desc":"+40% Elemental Power."},
+ 143: 		# Cross-synergy items
+ 144: 		{"kind":"item","id":"volatile_rounds","name":"Volatile Rounds","cost":16,"rarity":"Rare",
+ 145: 		 "desc":"Non-explosive hits have a chance to explode."},
+ 146: 		{"kind":"item","id":"elemental_fuse","name":"Elemental Fuse","cost":18,"rarity":"Rare",
+ 147: 		 "desc":"Non-elemental hits may inflict a random element."},
+ 148: 		{"kind":"item","id":"payload_catalyst","name":"Payload Catalyst","cost":20,"rarity":"Epic",
+ 149: 		 "desc":"Explosions may apply a random elemental effect in the blast."},
+ 150: 		{"kind":"item","id":"superconductor","name":"Superconductor","cost":22,"rarity":"Epic",
+ 151: 		 "desc":"Shock effects arc to more targets and reach farther."},
+ 152: 		# Turret Power items
+ 153: 		{"kind":"item","id":"toolkit","name":"Toolkit","cost":12,"rarity":"Uncommon",
+ 154: 		 "desc":"+10% Turret Power."},
+ 155: 		{"kind":"item","id":"engineer_manual","name":"Engineer Manual","cost":16,"rarity":"Rare",
+ 156: 		 "desc":"+20% Turret Power."},
+ 157: ]
+ 158: 
+ 159: static func weapons() -> Array[Dictionary]:
+ 160: 	# Return the shared catalog. Callers should not mutate entries.
+ 161: 	# If mutation is needed, call .duplicate(true) on entries.
+ 162: 	return WEAPONS
+ 163: 
+ 164: static func items() -> Array[Dictionary]:
+ 165: 	# Return the shared catalog. Callers should not mutate entries.
+ 166: 	return ITEMS
+ 167: 
+ 168: static func rarity_color(r: String) -> Color:
+ 169: 	match r:
+ 170: 		"Common":
+ 171: 			return Color(0.85, 0.85, 0.85)
+ 172: 		"Uncommon":
+ 173: 			return Color(0.4, 1.0, 0.4)
+ 174: 		"Rare":
+ 175: 			return Color(0.4, 0.6, 1.0)
+ 176: 		"Epic":
+ 177: 			return Color(0.8, 0.4, 1.0)
+ 178: 		"Legendary":
+ 179: 			return Color(1.0, 0.7, 0.2)
+ 180: 		_:
+ 181: 			return Color(1, 1, 1)
+ 182: 
+ 183: static func rarity_color_hex(r: String) -> String:
+ 184: 	# Returns hex without leading '#'
+ 185: 	return rarity_color(r).to_html(false)
+ 186: 
+ 187: static func generate_offers(count: int, wave: int = 1) -> Array[Dictionary]:
+ 188: 	var pool: Array[Dictionary] = []
+ 189: 	pool.append_array(weapons())
+ 190: 	pool.append_array(items())
+ 191: 	var offers: Array[Dictionary] = []
+ 192: 	if pool.is_empty() or count <= 0:
+ 193: 		return offers
+ 194: 	# Cheaper sampling: shuffle once and take the first N
+ 195: 	pool.shuffle()
+ 196: 	var take: int = min(count, pool.size())
+ 197: 	for i in range(take):
+ 198: 		var base: Dictionary = pool[i]
+ 199: 		var offer: Dictionary = (base.duplicate(true) as Dictionary)
+ 200: 		# Chance to roll higher tier for weapons increases with wave
+ 201: 		if String(offer.get("kind","")) == "weapon":
+ 202: 			var t: int = _roll_weapon_tier(wave)
+ 203: 			if t > 1:
+ 204: 				offer["tier"] = t
+ 205: 				# Scale cost for higher tier
+ 206: 				var base_cost: int = int(offer.get("cost", 10))
+ 207: 				var mult: float = pow(1.5, float(t - 1))
+ 208: 				offer["cost"] = int(round(base_cost * mult))
+ 209: 		offers.append(offer)
+ 210: 	return offers
+ 211: 
+ 212: static func _roll_weapon_tier(wave: int) -> int:
+ 213: 	# Increasing probabilities by wave; capped to reasonable maxima
+ 214: 	var w: int = max(1, wave)
+ 215: 	var p2: float = min(0.05 + 0.02 * float(w - 1), 0.55)
+ 216: 	var p3: float = min(0.01 + 0.01 * float(w - 1), 0.30)
+ 217: 	var p4: float = min(0.00 + 0.005 * float(w - 1), 0.15)
+ 218: 	var p5: float = min(0.00 + 0.002 * float(w - 1), 0.08)
+ 219: 	# Normalize tiers by rolling from highest to lowest
+ 220: 	var r := randf()
+ 221: 	if r < p5:
+ 222: 		return 5
+ 223: 	r -= p5
+ 224: 	if r < p4:
+ 225: 		return 4
+ 226: 	r -= p4
+ 227: 	if r < p3:
+ 228: 		return 3
+ 229: 	r -= p3
+ 230: 	if r < p2:
+ 231: 		return 2
+ 232: 	return 1

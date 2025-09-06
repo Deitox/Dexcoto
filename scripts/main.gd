@@ -440,9 +440,9 @@ func _show_upgrade_choices() -> void:
 	var r1: String = String(current_choices[0].get("rarity", "Common"))
 	var r2: String = String(current_choices[1].get("rarity", "Common"))
 	var r3: String = String(current_choices[2].get("rarity", "Common"))
-	var c1 := ShopLib.rarity_color(r1)
-	var c2 := ShopLib.rarity_color(r2)
-	var c3 := ShopLib.rarity_color(r3)
+	var c1: Color = ShopLib.rarity_color(r1)
+	var c2: Color = ShopLib.rarity_color(r2)
+	var c3: Color = ShopLib.rarity_color(r3)
 	btn1.add_theme_color_override("font_color", c1)
 	btn1.add_theme_color_override("font_hover_color", c1)
 	btn1.add_theme_color_override("font_pressed_color", c1)
@@ -723,6 +723,14 @@ func _on_shop_buy(index: int) -> void:
 				"superconductor":
 					if player:
 						player.add_item("superconductor")
+				"toolkit":
+					if player:
+						player.turret_power_mult *= 1.10
+						player.add_item("toolkit")
+				"engineer_manual":
+					if player:
+						player.turret_power_mult *= 1.20
+						player.add_item("engineer_manual")
 				"blast_caps":
 					if player:
 						player.explosive_power_mult *= 1.10

@@ -30,6 +30,9 @@ func _physics_process(delta: float) -> void:
 func _on_body_entered(body: Node) -> void:
 	if body.is_in_group("enemies"):
 		if body.has_method("take_damage"):
+			# Attribute source for on-kill stacking effects
+			if effect != null and effect is Dictionary and effect.has("source"):
+				body.set("last_damage_source", effect["source"])
 			body.take_damage(damage)
 		# Apply elemental effect if supported (independent of explosion)
 		var has_eff := (effect != null and effect is Dictionary and effect.size() > 0)
@@ -65,6 +68,9 @@ func _explode(pos: Vector2, dmg: int, radius: float, col: Color) -> void:
 			continue
 		var d2: float = pos.distance_squared_to(e.global_position)
 		if d2 <= r2 and e.has_method("take_damage"):
+			# Attribute explosion to same source if present
+			if effect != null and effect is Dictionary and effect.has("source"):
+				e.set("last_damage_source", effect["source"])
 			e.take_damage(dmg)
 	# Visual polish: double shockwave + radial streaks
 	var ring := Line2D.new()

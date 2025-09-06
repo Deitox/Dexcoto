@@ -1,0 +1,496 @@
+   1: extends CharacterBody2D
+   2: 
+   3: @export var move_speed: float = 240.0
+   4: @export var max_health: int = 100
+   5: @export var fire_interval: float = 0.35
+   6: @export var bullet_speed: float = 500.0
+   7: @export var bullet_damage: int = 10
+   8: 
+   9: var health: int
+  10: var _regen_accum: float = 0.0
+  11: 
+  12: # Upgradable/global stats
+  13: var regen_per_second: float = 0.0
+  14: var projectiles_per_shot: int = 0 # extra projectiles added to each weapon's base
+  15: var spread_degrees: float = 14.0
+  16: var input_enabled: bool = true
+  17: var currency_gain_mult: float = 1.0
+  18: var attack_speed_mult: float = 1.0
+  19: var damage_mult: float = 1.0
+  20: var projectile_speed_mult: float = 1.0
+  21: var bullet_color: Color = Color(1, 1, 0.2)
+  22: var lifesteal_per_kill: int = 0
+  23: @onready var body_poly: Polygon2D = $Polygon2D
+  24: 
+  25: # Elemental scaling (affects elemental weapons only)
+  26: var elemental_damage_mult: float = 1.0
+  27: var explosive_power_mult: float = 1.0
+  28: var turret_power_mult: float = 1.0
+  29: 
+  30: # Item ownership counts (by item id)
+  31: var item_counts: Dictionary = {}
+  32: 
+  33: # Track bonus damage gained from exceeding caps
+  34: var overflow_damage_mult_from_attack_speed: float = 1.0
+  35: var overflow_damage_mult_from_projectiles: float = 1.0
+  36: 
+  37: # Debug/guard against rare teleport glitches
+  38: var _last_pos: Vector2 = Vector2.ZERO
+  39: var _teleport_log_cooldown: float = 0.0
+  40: 
+  41: # Weapon system
+  42: const MAX_WEAPON_SLOTS: int = 6
+  43: var weapons: Array[Dictionary] = [] # each: {id, name, tier, fire_interval, damage, speed, projectiles, color, cd}
+  44: var _kill_counters: Dictionary = {} # weapon_id -> kills toward next stack
+  45: 
+  46: @onready var bullet_scene: PackedScene = preload("res://scenes/Bullet.tscn")
+  47: @onready var bullet_pool: Node = null
+  48: 
+  49: signal died
+  50: signal weapon_added(index: int)
+  51: signal weapon_merged(id: String, tier: int, index: int)
+  52: 
+  53: # Performance caps
+  54: const MAX_TOTAL_PROJECTILES: int = 10
+  55: const MAX_PROJECTILE_BONUS: int = 10 # cap on player.projectiles_per_shot
+  56: const MAX_ATTACK_SPEED_MULT: float = 4.0
+  57: const MIN_WEAPON_INTERVAL: float = 0.08
+  58: 
+  59: func _ready() -> void:
+  60: 	health = max_health
+  61: 	bullet_pool = get_tree().get_first_node_in_group("bullet_pool")
+  62: 	# Ensure we pick up the pool if its _ready adds the group after ours runs
+  63: 	call_deferred("_ensure_bullet_pool")
+  64: 	_last_pos = global_position
+  65: 
+  66: func set_position_and_reset_guard(pos: Vector2) -> void:
+  67: 	# Public helper to intentionally reposition the player without triggering the anti-teleport guard.
+  68: 	global_position = pos
+  69: 	_last_pos = pos
+  70: 	velocity = Vector2.ZERO
+  71: 
+  72: 
+  73: func _physics_process(delta: float) -> void:
+  74: 	# Regen
+  75: 	if regen_per_second > 0.0 and health > 0 and health < max_health:
+  76: 		_regen_accum += regen_per_second * delta
+  77: 		var heal: int = int(_regen_accum)
+  78: 		if heal > 0:
+  79: 			_regen_accum -= float(heal)
+  80: 			health = clamp(health + heal, 0, max_health)
+  81: 
+  82: 	var input_dir: Vector2 = Vector2.ZERO
+  83: 	if input_enabled:
+  84: 		input_dir = Input.get_vector("ui_left", "ui_right", "ui_up", "ui_down")
+  85: 	velocity = input_dir * move_speed
+  86: 	move_and_slide()
+  87: 
+  88: 	# Anti-teleport guard: if we moved an unexpectedly large distance in one physics frame,
+  89: 	# cancel the move and zero velocity. This is defensive while we hunt the root cause.
+  90: 	var step_dist: float = global_position.distance_to(_last_pos)
+  91: 	var expected_step: float = move_speed * delta * 2.5 # generous factor for diagonals/buffs
+  92: 	var hard_cap: float = 320.0 # absolute threshold in px/frame
+  93: 	if step_dist > max(expected_step, hard_cap):
+  94: 		global_position = _last_pos
+  95: 		velocity = Vector2.ZERO
+  96: 		if _teleport_log_cooldown <= 0.0:
+  97: 			print("[Guard] Cancelled abnormal move: ", step_dist)
+  98: 			_teleport_log_cooldown = 1.0
+  99: 	_teleport_log_cooldown = max(0.0, _teleport_log_cooldown - delta)
+ 100: 	_last_pos = global_position
+ 101: 
+ 102: 	var target: Node2D = _get_nearest_enemy()
+ 103: 	if target:
+ 104: 		_update_weapons_fire(delta, target.global_position)
+ 105: 
+ 106: func _get_nearest_enemy() -> Node2D:
+ 107: 	var enemies: Array = get_tree().get_nodes_in_group("enemies")
+ 108: 	var nearest: Node2D = null
+ 109: 	var min_d: float = INF
+ 110: 	for e in enemies:
+ 111: 		if not is_instance_valid(e):
+ 112: 			continue
+ 113: 		# Skip pooled/inactive or hidden enemies
+ 114: 		var is_active := true
+ 115: 		if e.has_method("get"):
+ 116: 			var a = e.get("active")
+ 117: 			if a != null:
+ 118: 				is_active = bool(a)
+ 119: 		if not is_active or not e.is_visible_in_tree():
+ 120: 			continue
+ 121: 		var d: float = global_position.distance_squared_to(e.global_position)
+ 122: 		if d < min_d:
+ 123: 			min_d = d
+ 124: 			nearest = e
+ 125: 	return nearest
+ 126: 
+ 127: func _update_weapons_fire(delta: float, target_pos: Vector2) -> void:
+ 128: 	for i in range(weapons.size()):
+ 129: 		var w: Dictionary = weapons[i]
+ 130: 		w["cd"] = float(w.get("cd", 0.0)) - delta
+ 131: 		if w["cd"] <= 0.0:
+ 132: 			_fire_weapon_at(w, target_pos)
+ 133: 			var base_cd: float = float(w["fire_interval"]) / max(0.1, attack_speed_mult)
+ 134: 			w["cd"] = max(MIN_WEAPON_INTERVAL, base_cd)
+ 135: 		weapons[i] = w
+ 136: 
+ 137: func _fire_weapon_at(w: Dictionary, pos: Vector2) -> void:
+ 138: 	var dir: Vector2 = (pos - global_position).normalized()
+ 139: 	var base_proj: int = int(w.get("projectiles", 1))
+ 140: 	var shots: int = max(1, base_proj + projectiles_per_shot)
+ 141: 	var dmg: int = int(round(int(w.get("damage", 10)) * damage_mult))
+ 142: 	var spd: float = float(w.get("speed", 500.0)) * projectile_speed_mult
+ 143: 	var color: Color = Color(w.get("color", bullet_color))
+ 144: 	# Elemental scaling and effect packaging
+ 145: 	var effect: Dictionary = {}
+ 146: 	if w.has("element"):
+ 147: 		dmg = int(round(float(dmg) * elemental_damage_mult))
+ 148: 		var elem: String = String(w.get("element"))
+ 149: 		var base_proc: float = float(w.get("element_proc", 0.0))
+ 150: 		var final_proc: float = clamp(base_proc * elemental_damage_mult, 0.0, 0.95)
+ 151: 		effect = {
+ 152: 			"element": elem,
+ 153: 			"proc": final_proc,
+ 154: 			"power": elemental_damage_mult,
+ 155: 		}
+ 156: 		var keys := [
+ 157: 			"ignite_factor","ignite_duration",
+ 158: 			"freeze_duration",
+ 159: 			"arc_count","arc_radius","arc_factor",
+ 160: 			"vuln","vuln_duration"
+ 161: 		]
+ 162: 		for k in keys:
+ 163: 			if w.has(k):
+ 164: 				effect[k] = w[k]
+ 165: 		# Superconductor synergy boosts Shock arcs
+ 166: 		if elem == "shock" and has_method("get_item_count"):
+ 167: 			var sc: int = int(get_item_count("superconductor"))
+ 168: 			if sc > 0:
+ 169: 				effect["arc_count"] = int(effect.get("arc_count", 2)) + sc
+ 170: 				effect["arc_radius"] = float(effect.get("arc_radius", 140.0)) + 12.0 * float(sc)
+ 171: 	# Explosive packaging (AoE on hit)
+ 172: 	if bool(w.get("explosive", false)):
+ 173: 		if effect.size() == 0:
+ 174: 			effect = {}
+ 175: 		effect["explosive"] = true
+ 176: 		var base_r: float = float(w.get("expl_radius", 120.0))
+ 177: 		effect["radius"] = base_r * max(0.1, explosive_power_mult)
+ 178: 		effect["expl_factor"] = float(w.get("expl_factor", 0.9)) * max(0.5, explosive_power_mult)
+ 179: 		effect["color"] = color
+ 180: 	# Cap total projectiles and convert overflow into proportional damage
+ 181: 	if shots > MAX_TOTAL_PROJECTILES:
+ 182: 		var scale_up: float = float(shots) / float(MAX_TOTAL_PROJECTILES)
+ 183: 		shots = MAX_TOTAL_PROJECTILES
+ 184: 		dmg = int(round(float(dmg) * scale_up))
+ 185: 	# Projectiles overload control
+ 186: 	var current: int = get_tree().get_nodes_in_group("projectiles").size()
+ 187: 	var soft_cap: int = 200
+ 188: 	if current > soft_cap:
+ 189: 		var scale_factor: float = clamp(float(soft_cap) / float(current), 0.3, 1.0)
+ 190: 		shots = max(1, int(round(float(shots) * scale_factor)))
+ 191: 		dmg = int(round(float(dmg) * (1.0 / scale_factor)))
+ 192: 	if shots == 1:
+ 193: 		_ensure_bullet_pool()
+ 194: 			if bullet_pool and bullet_pool.has_method("spawn_bullet"):
+ 195: 				bullet_pool.call("spawn_bullet", global_position + dir * 16.0, dir, spd, dmg, color, 2.0, effect)
+ 196: 		else:
+ 197: 			var b = bullet_scene.instantiate()
+ 198: 			get_tree().current_scene.add_child(b)
+ 199: 			if b.has_method("activate"):
+ 200: 				b.call("activate", global_position + dir * 16.0, dir, spd, dmg, color, 2.0, null, effect)
+ 201: 			else:
+ 202: 				b.global_position = global_position + dir * 16.0
+ 203: 				b.direction = dir
+ 204: 				b.speed = spd
+ 205: 				b.damage = dmg
+ 206: 				b.color = color
+ 207: 	else:
+ 208: 		var total_spread: float = deg_to_rad(spread_degrees)
+ 209: 		var start_angle: float = -total_spread * 0.5
+ 210: 		var step: float = 0.0
+ 211: 		if shots > 1:
+ 212: 			step = total_spread / float(shots - 1)
+ 213: 		for i in range(shots):
+ 214: 			var angle: float = start_angle + step * i
+ 215: 			var d: Vector2 = dir.rotated(angle)
+ 216: 			_ensure_bullet_pool()
+ 217: 			if bullet_pool and bullet_pool.has_method("spawn_bullet"):
+ 218: 				bullet_pool.call("spawn_bullet", global_position + d * 16.0, d, spd, dmg, color, 2.0, effect)
+ 219: 			else:
+ 220: 				var b2 = bullet_scene.instantiate()
+ 221: 				get_tree().current_scene.add_child(b2)
+ 222: 				if b2.has_method("activate"):
+ 223: 					b2.call("activate", global_position + d * 16.0, d, spd, dmg, color, 2.0, null, effect)
+ 224: 				else:
+ 225: 					b2.global_position = global_position + d * 16.0
+ 226: 					b2.direction = d
+ 227: 					b2.speed = spd
+ 228: 					b2.damage = dmg
+ 229: 					b2.color = color
+ 230: 
+ 231: func take_damage(amount: int) -> void:
+ 232: 	health -= amount
+ 233: 	if health <= 0:
+ 234: 		health = 0
+ 235: 		emit_signal("died")
+ 236: 
+ 237: func apply_upgrade(upg: Dictionary) -> void:
+ 238: 	var t: String = String(upg.get("type", ""))
+ 239: 	var v: Variant = upg.get("value")
+ 240: 	match t:
+ 241: 		"attack_speed":
+ 242: 			attack_speed_mult *= (1.0 + float(v))
+ 243: 			if attack_speed_mult > MAX_ATTACK_SPEED_MULT:
+ 244: 				var overflow_factor: float = attack_speed_mult / MAX_ATTACK_SPEED_MULT
+ 245: 				attack_speed_mult = MAX_ATTACK_SPEED_MULT
+ 246: 				damage_mult *= overflow_factor
+ 247: 				overflow_damage_mult_from_attack_speed *= overflow_factor
+ 248: 		"damage":
+ 249: 			damage_mult *= (1.0 + float(v))
+ 250: 		"move_speed":
+ 251: 			move_speed = move_speed * (1.0 + float(v))
+ 252: 		"max_hp":
+ 253: 			max_health += int(v)
+ 254: 			health = min(max_health, health + int(v))
+ 255: 		"bullet_speed":
+ 256: 			projectile_speed_mult *= (1.0 + float(v))
+ 257: 		"regen":
+ 258: 			regen_per_second += float(v)
+ 259: 		"projectiles":
+ 260: 			var add: int = int(v)
+ 261: 			for i in range(add):
+ 262: 				if projectiles_per_shot < MAX_PROJECTILE_BONUS:
+ 263: 					projectiles_per_shot += 1
+ 264: 				else:
+ 265: 					# Convert surplus projectile into ~10% damage (approx equal to going from 10->11 projectiles)
+ 266: 					damage_mult *= 1.1
+ 267: 					overflow_damage_mult_from_projectiles *= 1.1
+ 268: 		"elemental_power":
+ 269: 			elemental_damage_mult *= (1.0 + float(v))
+ 270: 		"explosive_power":
+ 271: 			explosive_power_mult *= (1.0 + float(v))
+ 272: 		"turret_power":
+ 273: 			turret_power_mult *= (1.0 + float(v))
+ 274: 		_:
+ 275: 			pass
+ 276: 
+ 277: func can_accept_weapon(w: Dictionary) -> bool:
+ 278: 	if String(w.get("kind", "")) != "weapon":
+ 279: 		return false
+ 280: 	var id: String = String(w.get("id", ""))
+ 281: 	var tier: int = int(w.get("tier", 1))
+ 282: 	# Always accept if we have a free slot
+ 283: 	if weapons.size() < MAX_WEAPON_SLOTS:
+ 284: 		return true
+ 285: 	# Only accept when full if this purchase enables an immediate merge
+ 286: 	var count_same_tier: int = 0
+ 287: 	for ww in weapons:
+ 288: 		if String(ww.get("id", "")) == id and int(ww.get("tier", 1)) == tier:
+ 289: 			count_same_tier += 1
+ 290: 	return count_same_tier >= 2
+ 291: 
+ 292: func equip_weapon(w: Dictionary) -> void:
+ 293: 	if String(w.get("kind", "")) != "weapon":
+ 294: 		return
+ 295: 	var start_tier: int = int(w.get("tier", 1))
+ 296: 	var inst: Dictionary = {
+ 297: 		"id": String(w.get("id")),
+ 298: 		"name": String(w.get("name")),
+ 299: 		"tier": start_tier,
+ 300: 		"fire_interval": float(w.get("fire_interval", 0.4)),
+ 301: 		"damage": int(w.get("damage", 8)),
+ 302: 		"speed": float(w.get("speed", 500.0)),
+ 303: 		"projectiles": int(w.get("projectiles", 1)),
+ 304: 		"color": w.get("color", Color(1,1,0.2)),
+ 305: 		"cd": 0.0,
+ 306: 	}
+ 307: 	# Copy optional elemental fields if present
+ 308: 	var opt_keys := [
+ 309: 		"element","element_proc",
+ 310: 		"ignite_factor","ignite_duration",
+ 311: 		"freeze_duration",
+ 312: 		"arc_count","arc_radius","arc_factor",
+ 313: 		"vuln","vuln_duration",
+ 314: 		"stack"
+ 315: 	]
+ 316: 	for k in opt_keys:
+ 317: 		if w.has(k):
+ 318: 			inst[k] = w[k]
+ 319: 	# Copy explosive fields if present
+ 320: 	if bool(w.get("explosive", false)):
+ 321: 		inst["explosive"] = true
+ 322: 		if w.has("expl_radius"):
+ 323: 			inst["expl_radius"] = w["expl_radius"]
+ 324: 		if w.has("expl_factor"):
+ 325: 			inst["expl_factor"] = w["expl_factor"]
+ 326: 	# Apply tier scaling if starting above tier 1
+ 327: 	if start_tier > 1:
+ 328: 		for t in range(2, start_tier + 1):
+ 329: 			inst["damage"] = int(round(int(inst["damage"]) * 1.25))
+ 330: 			inst["fire_interval"] = float(inst["fire_interval"]) * 0.9
+ 331: 			if t % 3 == 0:
+ 332: 				inst["projectiles"] = int(inst["projectiles"]) + 1
+ 333: 	weapons.append(inst)
+ 334: 	var added_index: int = weapons.size() - 1
+ 335: 	var merge_info: Dictionary = _try_merge_weapon(String(inst["id"]))
+ 336: 	if bool(merge_info.get("merged", false)):
+ 337: 		var idx: int = int(merge_info.get("index", weapons.size() - 1))
+ 338: 		var new_tier: int = int(merge_info.get("new_tier", 1))
+ 339: 		emit_signal("weapon_merged", String(inst["id"]), new_tier, idx)
+ 340: 	else:
+ 341: 		emit_signal("weapon_added", added_index)
+ 342: 
+ 343: func set_player_color(c: Color) -> void:
+ 344: 	bullet_color = c
+ 345: 	if body_poly:
+ 346: 		body_poly.color = c
+ 347: 
+ 348: func add_item(id: String) -> void:
+ 349: 	var cur: int = int(item_counts.get(id, 0))
+ 350: 	item_counts[id] = cur + 1
+ 351: 
+ 352: func get_item_count(id: String) -> int:
+ 353: 	return int(item_counts.get(id, 0))
+ 354: 
+ 355: func _try_merge_weapon(id: String) -> Dictionary:
+ 356: 	# Merge three of same id and same tier into one higher tier. Repeat while possible.
+ 357: 	var merged: bool = true
+ 358: 	var any_merged: bool = false
+ 359: 	var final_index: int = -1
+ 360: 	var final_tier: int = 0
+ 361: 	while merged:
+ 362: 		merged = false
+ 363: 		# group indices by tier
+ 364: 		var by_tier: Dictionary = {}
+ 365: 		for i in range(weapons.size()):
+ 366: 			var w: Dictionary = weapons[i]
+ 367: 			if String(w.get("id","")) != id:
+ 368: 				continue
+ 369: 			var t: int = int(w.get("tier",1))
+ 370: 			if not by_tier.has(t):
+ 371: 				by_tier[t] = []
+ 372: 			by_tier[t].append(i)
+ 373: 		# find any tier with 3 or more
+ 374: 		for tier in by_tier.keys():
+ 375: 			var arr: Array = by_tier[tier]
+ 376: 			if arr.size() >= 3:
+ 377: 				# remove three highest indices to avoid shifting earlier
+ 378: 				arr.sort() # ascending
+ 379: 				var idxs: Array = []
+ 380: 				var n: int = arr.size()
+ 381: 				idxs.append(arr[n-1])
+ 382: 				idxs.append(arr[n-2])
+ 383: 				idxs.append(arr[n-3])
+ 384: 				idxs.sort() # ascending for safe removal
+ 385: 				# base stats from one of them
+ 386: 				var base: Dictionary = weapons[idxs[-1]]
+ 387: 				# remove from weapons
+ 388: 				for j in range(idxs.size()):
+ 389: 					var rem_index: int = int(idxs[j])
+ 390: 					weapons.remove_at(rem_index)
+ 391: 					# adjust other indices > rem_index in all arr entries
+ 392: 					for k in range(j+1, idxs.size()):
+ 393: 						if int(idxs[k]) > rem_index:
+ 394: 							idxs[k] = int(idxs[k]) - 1
+ 395: 				# create upgraded weapon
+ 396: 				var new_tier: int = int(tier) + 1
+ 397: 				var new_inst: Dictionary = base.duplicate(true)
+ 398: 				new_inst["tier"] = new_tier
+ 399: 				# scale stats
+ 400: 				new_inst["damage"] = int(round(int(new_inst["damage"]) * 1.25))
+ 401: 				new_inst["fire_interval"] = float(new_inst["fire_interval"]) * 0.9
+ 402: 				if new_tier % 3 == 0:
+ 403: 					new_inst["projectiles"] = int(new_inst["projectiles"]) + 1
+ 404: 				new_inst["cd"] = 0.0
+ 405: 				weapons.append(new_inst)
+ 406: 				any_merged = true
+ 407: 				final_index = weapons.size() - 1
+ 408: 				final_tier = new_tier
+ 409: 				merged = true
+ 410: 				break
+ 411: 		# loop again if merged
+ 412: 	return {
+ 413: 		"merged": any_merged,
+ 414: 		"index": final_index,
+ 415: 		"new_tier": final_tier,
+ 416: 	}
+ 417: 
+ 418: func on_enemy_killed(source: Dictionary) -> void:
+ 419: 	if source == null or not (source is Dictionary):
+ 420: 	# Attach source attribution for on-kill stacking
+ 421: 	effect["source"] = {"kind":"weapon", "weapon_id": String(w.get("id","")), "tier": int(w.get("tier",1))}
+ 422: 		return
+ 423: 	var kind: String = String(source.get("kind",""))
+ 424: 	if kind != "weapon":
+ 425: 		return
+ 426: 	var wid: String = String(source.get("weapon_id",""))
+ 427: 	if wid == "":
+ 428: 		return
+ 429: 	# Find the matching weapon instance to read its stack config and tier
+ 430: 	var picked: Dictionary = {}
+ 431: 	for w in weapons:
+ 432: 		if String(w.get("id","")) == wid:
+ 433: 			picked = w
+ 434: 			break
+ 435: 	if picked.is_empty() or not picked.has("stack"):
+ 436: 		return
+ 437: 	var sconf: Dictionary = picked["stack"]
+ 438: 	var base_kills: int = int(sconf.get("base_kills", 5))
+ 439: 	var tier: int = int(picked.get("tier", 1))
+ 440: 	# Higher tier requires fewer kills: divide by (1 + 0.25*(tier-1))
+ 441: 	var denom: float = 1.0 + 0.25 * float(max(0, tier - 1))
+ 442: 	var need: int = max(1, int(round(float(base_kills) / denom)))
+ 443: 	var cur: int = int(_kill_counters.get(wid, 0)) + 1
+ 444: 	if cur >= need:
+ 445: 		_kill_counters[wid] = 0
+ 446: 		_apply_stack_effect(String(sconf.get("type","")), sconf)
+ 447: 	else:
+ 448: 		_kill_counters[wid] = cur
+ 449: 
+ 450: func _apply_stack_effect(stype: String, conf: Dictionary) -> void:
+ 451: 	match stype:
+ 452: 		"damage":
+ 453: 			var inc: float = float(conf.get("per_stack", 0.02))
+ 454: 			damage_mult *= (1.0 + inc)
+ 455: 			_show_stack_cue("+%d%% Damage" % int(round(inc*100.0)), Color(1.0,0.5,0.5))
+ 456: 		"attack_speed":
+ 457: 			var inc2: float = float(conf.get("per_stack", 0.02))
+ 458: 			attack_speed_mult *= (1.0 + inc2)
+ 459: 			_show_stack_cue("+%d%% Attack Speed" % int(round(inc2*100.0)), Color(0.6,1.0,0.6))
+ 460: 		"max_hp":
+ 461: 			var add: int = int(conf.get("per_stack", 2))
+ 462: 			max_health += add
+ 463: 			health = min(max_health, health + add)
+ 464: 			_show_stack_cue("+%d Max HP" % add, Color(0.6,0.8,1.0))
+ 465: 		"turret_spawn":
+ 466: 			var main := get_tree().current_scene
+ 467: 			if main and main.has_method("_queue_turret"):
+ 468: 				main._queue_turret()
+ 469: 			_show_stack_cue("+Turret", Color(0.7,1.0,0.3))
+ 470: 		_:
+ 471: 			pass
+ 472: 
+ 473: func _show_stack_cue(msg: String, col: Color) -> void:
+ 474: 	# Simple ring cue above the player
+ 475: 	var ring := Line2D.new()
+ 476: 	ring.width = 3.0
+ 477: 	ring.default_color = col
+ 478: 	var r: float = 14.0
+ 479: 	var segs: int = 20
+ 480: 	var pts := PackedVector2Array()
+ 481: 	for s in range(segs + 1):
+ 482: 		var a := TAU * float(s) / float(segs)
+ 483: 		pts.append(Vector2(cos(a), sin(a)) * r)
+ 484: 	ring.points = pts
+ 485: 	get_tree().current_scene.add_child(ring)
+ 486: 	ring.global_position = global_position + Vector2(0, -20)
+ 487: 	var tw := ring.create_tween()
+ 488: 	tw.tween_property(ring, "scale", Vector2(1.4, 1.4), 0.25).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+ 489: 	tw.parallel().tween_property(ring, "modulate:a", 0.0, 0.35)
+ 490: 	tw.tween_callback(ring.queue_free)
+ 491: 
+ 492: func _ensure_bullet_pool() -> void:
+ 493: 	if bullet_pool == null or not is_instance_valid(bullet_pool):
+ 494: 		var p = get_tree().get_first_node_in_group("bullet_pool")
+ 495: 		if p != null:
+ 496: 			bullet_pool = p

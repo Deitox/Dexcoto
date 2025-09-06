@@ -74,7 +74,25 @@ const WEAPONS: Array[Dictionary] = [
 		 "desc":"Explodes in a large radius.",
 		 "fire_interval":0.95, "damage":22, "speed":460, "projectiles":1, "color": Color(1.0,0.85,0.6),
 		 "explosive": true, "expl_radius": 200.0, "expl_factor": 0.8},
-	]
+		# Stacking-kill weapons
+		{"kind":"weapon","id":"berserker","name":"Berserker","cost":18,"rarity":"Rare",
+		 "desc":"Kills grant +2% Damage per stack (fewer kills at higher tier).",
+		 "fire_interval":0.40, "damage":10, "speed":520, "projectiles":1, "color": Color(1.0,0.4,0.4),
+		 "stack": {"type":"damage","per_stack":0.02,"base_kills":6}},
+		{"kind":"weapon","id":"tempo","name":"Tempo","cost":18,"rarity":"Rare",
+		 "desc":"Kills grant +2% Attack Speed per stack (fewer kills at higher tier).",
+		 "fire_interval":0.30, "damage":8, "speed":540, "projectiles":1, "color": Color(0.6,1.0,0.6),
+		 "stack": {"type":"attack_speed","per_stack":0.02,"base_kills":6}},
+		{"kind":"weapon","id":"bulwark","name":"Bulwark","cost":20,"rarity":"Epic",
+		 "desc":"Kills grant +3 Max HP per stack (fewer kills at higher tier).",
+		 "fire_interval":0.55, "damage":14, "speed":500, "projectiles":1, "color": Color(0.6,0.8,1.0),
+		 "stack": {"type":"max_hp","per_stack":3,"base_kills":7}},
+		# Constructor-style weapon that spawns turrets on kill stacks
+		{"kind":"weapon","id":"constructor","name":"Constructor","cost":14,"rarity":"Uncommon",
+		 "desc":"Kills spawn turrets after a few kills (fewer kills at higher tier).",
+		 "fire_interval":0.45, "damage":9, "speed":520, "projectiles":1, "color": Color(0.7,1.0,0.3),
+		 "stack": {"type":"turret_spawn","per_stack":1,"base_kills":4}},
+]
 
 const ITEMS: Array[Dictionary] = [
 		{"kind":"item","id":"money_charm","name":"Money Charm","cost":12,"rarity":"Uncommon",
@@ -128,7 +146,12 @@ const ITEMS: Array[Dictionary] = [
 		 "desc":"Explosions may apply a random elemental effect in the blast."},
 		{"kind":"item","id":"superconductor","name":"Superconductor","cost":22,"rarity":"Epic",
 		 "desc":"Shock effects arc to more targets and reach farther."},
-	]
+		# Turret Power items
+		{"kind":"item","id":"toolkit","name":"Toolkit","cost":12,"rarity":"Uncommon",
+		 "desc":"+10% Turret Power."},
+		{"kind":"item","id":"engineer_manual","name":"Engineer Manual","cost":16,"rarity":"Rare",
+		 "desc":"+20% Turret Power."},
+]
 
 static func weapons() -> Array[Dictionary]:
 	# Return the shared catalog. Callers should not mutate entries.

@@ -10,6 +10,7 @@ var tier: int = 1
 var active: bool = true
 var pool: Node = null
 var reward_points: int = 1
+var last_damage_source: Dictionary = {}
 
 @onready var hitbox: Area2D = $Hitbox
 @onready var poly: Polygon2D = $Polygon2D
@@ -111,6 +112,10 @@ func take_damage(amount: int) -> void:
 		if get_tree().current_scene and get_tree().current_scene.has_method("add_score"):
 			# Pass 1 kill and reward points scaled to enemy power
 			get_tree().current_scene.add_score(1, reward_points)
+		# Inform player of kill with source attribution
+		var player = get_tree().get_first_node_in_group("player")
+		if player and player.has_method("on_enemy_killed"):
+			player.call("on_enemy_killed", last_damage_source)
 		_return_to_pool()
 
 func _on_hitbox_body_entered(body: Node) -> void:
@@ -151,6 +156,7 @@ func deactivate() -> void:
 	void_time = 0.0
 	void_vuln = 0.0
 	_clear_status_visuals()
+	last_damage_source = {}
 
 func _return_to_pool() -> void:
 	if pool and pool.has_method("return_enemy"):

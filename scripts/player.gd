@@ -25,6 +25,7 @@ var lifesteal_per_kill: int = 0
 # Elemental scaling (affects elemental weapons only)
 var elemental_damage_mult: float = 1.0
 var explosive_power_mult: float = 1.0
+var turret_power_mult: float = 1.0
 
 # Item ownership counts (by item id)
 var item_counts: Dictionary = {}
@@ -40,6 +41,7 @@ var _teleport_log_cooldown: float = 0.0
 # Weapon system
 const MAX_WEAPON_SLOTS: int = 6
 var weapons: Array[Dictionary] = [] # each: {id, name, tier, fire_interval, damage, speed, projectiles, color, cd}
+var _kill_counters: Dictionary = {} # weapon_id -> kills toward next stack
 
 @onready var bullet_scene: PackedScene = preload("res://scenes/Bullet.tscn")
 @onready var bullet_pool: Node = null
@@ -175,6 +177,8 @@ func _fire_weapon_at(w: Dictionary, pos: Vector2) -> void:
 		effect["radius"] = base_r * max(0.1, explosive_power_mult)
 		effect["expl_factor"] = float(w.get("expl_factor", 0.9)) * max(0.5, explosive_power_mult)
 		effect["color"] = color
+	# Attach source attribution for on-kill stacking effects
+	effect["source"] = {"kind":"weapon", "weapon_id": String(w.get("id","")), "tier": int(w.get("tier",1))}
 	# Cap total projectiles and convert overflow into proportional damage
 	if shots > MAX_TOTAL_PROJECTILES:
 		var scale_up: float = float(shots) / float(MAX_TOTAL_PROJECTILES)
@@ -267,6 +271,8 @@ func apply_upgrade(upg: Dictionary) -> void:
 			elemental_damage_mult *= (1.0 + float(v))
 		"explosive_power":
 			explosive_power_mult *= (1.0 + float(v))
+		"turret_power":
+			turret_power_mult *= (1.0 + float(v))
 		_:
 			pass
 
@@ -306,7 +312,8 @@ func equip_weapon(w: Dictionary) -> void:
 		"ignite_factor","ignite_duration",
 		"freeze_duration",
 		"arc_count","arc_radius","arc_factor",
-		"vuln","vuln_duration"
+		"vuln","vuln_duration",
+		"stack"
 	]
 	for k in opt_keys:
 		if w.has(k):
@@ -409,6 +416,104 @@ func _try_merge_weapon(id: String) -> Dictionary:
 		"index": final_index,
 		"new_tier": final_tier,
 	}
+
+func on_enemy_killed(source: Dictionary) -> void:
+	if source == null or not (source is Dictionary):
+		return
+	var kind: String = String(source.get("kind",""))
+	if kind != "weapon":
+		return
+	var wid: String = String(source.get("weapon_id",""))
+	if wid == "":
+		return
+	# Find the matching weapon instance to read its stack config and tier
+	var picked: Dictionary = {}
+	for w in weapons:
+		if String(w.get("id","")) == wid:
+			picked = w
+			break
+	if picked.is_empty() or not picked.has("stack"):
+		return
+	var sconf: Dictionary = picked["stack"]
+	var base_kills: int = int(sconf.get("base_kills", 5))
+	var tier: int = int(picked.get("tier", 1))
+	# Higher tier requires fewer kills: divide by (1 + 0.25*(tier-1))
+	var denom: float = 1.0 + 0.25 * float(max(0, tier - 1))
+	var need: int = max(1, int(round(float(base_kills) / denom)))
+	var cur: int = int(_kill_counters.get(wid, 0)) + 1
+	if cur >= need:
+		_kill_counters[wid] = 0
+		_apply_stack_effect(String(sconf.get("type","")), sconf)
+	else:
+		_kill_counters[wid] = cur
+
+func _apply_stack_effect(stype: String, conf: Dictionary) -> void:
+	match stype:
+		"damage":
+			var inc: float = float(conf.get("per_stack", 0.02))
+			damage_mult *= (1.0 + inc)
+			_show_stack_cue("+%d%% Damage" % int(round(inc*100.0)), Color(1.0,0.5,0.5))
+		"attack_speed":
+			var inc2: float = float(conf.get("per_stack", 0.02))
+			attack_speed_mult *= (1.0 + inc2)
+			_show_stack_cue("+%d%% Attack Speed" % int(round(inc2*100.0)), Color(0.6,1.0,0.6))
+		"max_hp":
+			var add: int = int(conf.get("per_stack", 2))
+			max_health += add
+			health = min(max_health, health + add)
+			_show_stack_cue("+%d Max HP" % add, Color(0.6,0.8,1.0))
+		"turret_spawn":
+			# Spawn a turret immediately near the player (not queued for next wave).
+			var pos := global_position + Vector2(randf_range(-80,80), randf_range(-80,80))
+			var spawned := false
+			var main := get_tree().current_scene
+			if main and main.has_method("_spawn_turret_at_with_tier"):
+				main._spawn_turret_at_with_tier(pos, 1)
+				spawned = true
+			elif main and main.has_method("_spawn_turret_at"):
+				main._spawn_turret_at(pos)
+				spawned = true
+			if not spawned:
+				var tp = get_tree().get_first_node_in_group("turret_pool")
+				if tp and tp.has_method("spawn_turret"):
+					tp.call("spawn_turret", pos, 1)
+					spawned = true
+			_show_stack_cue("+Turret", Color(0.7,1.0,0.3))
+		_:
+			pass
+
+func _show_stack_cue(msg: String, col: Color) -> void:
+	# Simple ring cue above the player
+	var ring := Line2D.new()
+	ring.width = 3.0
+	ring.default_color = col
+	var r: float = 14.0
+	var segs: int = 20
+	var pts := PackedVector2Array()
+	for s in range(segs + 1):
+		var a := TAU * float(s) / float(segs)
+		pts.append(Vector2(cos(a), sin(a)) * r)
+	ring.points = pts
+	get_tree().current_scene.add_child(ring)
+	ring.global_position = global_position + Vector2(0, -20)
+	var tw := ring.create_tween()
+	tw.tween_property(ring, "scale", Vector2(1.4, 1.4), 0.25).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tw.parallel().tween_property(ring, "modulate:a", 0.0, 0.35)
+	tw.tween_callback(ring.queue_free)
+
+	# Floating text cue with the message
+	if msg != "":
+		var label := Label.new()
+		label.text = msg
+		label.add_theme_color_override("font_color", col)
+		label.modulate = Color(1,1,1,0.0)
+		get_tree().current_scene.add_child(label)
+		label.global_position = global_position + Vector2(0, -34)
+		var tw2 := label.create_tween()
+		tw2.tween_property(label, "modulate:a", 1.0, 0.12)
+		tw2.parallel().tween_property(label, "position:y", label.position.y - 16.0, 0.35)
+		tw2.tween_property(label, "modulate:a", 0.0, 0.18)
+		tw2.tween_callback(label.queue_free)
 
 func _ensure_bullet_pool() -> void:
 	if bullet_pool == null or not is_instance_valid(bullet_pool):

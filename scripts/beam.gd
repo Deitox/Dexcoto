@@ -41,6 +41,9 @@ func activate(pos: Vector2, dir: Vector2, dmg: int, col: Color, effect: Dictiona
 		end_point = Vector2(hit["position"])
 		var collider = hit.get("collider")
 		if collider and collider.is_in_group("enemies") and collider.has_method("take_damage"):
+			# Attribute source for on-kill stacking
+			if _effect is Dictionary and _effect.has("source"):
+				collider.set("last_damage_source", _effect["source"])
 			collider.take_damage(_damage)
 			if _effect is Dictionary and _effect.size() > 0 and collider.has_method("apply_elemental_effect"):
 				collider.apply_elemental_effect(_effect, _damage, end_point)

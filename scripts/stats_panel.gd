@@ -130,13 +130,17 @@ func refresh() -> void:
 	# Powers
 	var show_elem: bool = abs(elemental_power - 1.0) > 0.001
 	var show_expl: bool = abs(explosive_power - 1.0) > 0.001
-	if show_elem or show_expl:
+	var turret_power: float = float(player.get("turret_power_mult")) if player.has_method("get") else 1.0
+	var show_turret: bool = abs(turret_power - 1.0) > 0.001
+	if show_elem or show_expl or show_turret:
 		_add_section_header("Powers", _tier_hex(4))
 		var pwr := _add_grid()
 		if show_elem:
 			_add_kv(pwr, "Elemental Power", "x%.2f (%s)" % [elemental_power, _pct(elemental_power)])
 		if show_expl:
 			_add_kv(pwr, "Explosive Power", "x%.2f (%s)" % [explosive_power, _pct(explosive_power)])
+		if show_turret:
+			_add_kv(pwr, "Turret Power", "x%.2f (%s)" % [turret_power, _pct(turret_power)])
 
 	# Economy
 	if abs(currency_mult - 1.0) > 0.001 or lifesteal > 0:

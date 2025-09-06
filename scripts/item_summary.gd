@@ -6,7 +6,7 @@ const ShopLib = preload("res://scripts/shop.gd")
 
 func _fmt_line(item_id: String, raw: String, id_to_rarity: Dictionary) -> String:
 	var rar := String(id_to_rarity.get(item_id, "Common"))
-	var hex := ShopLib.rarity_color_hex(rar)
+	var hex: String = ShopLib.rarity_color_hex(rar)
 	# rarity_color_hex returns without '#'
 	return "[color=#%s]%s[/color]" % [hex, raw]
 
@@ -155,6 +155,16 @@ func _refresh() -> void:
 	n = int(counts.get("superconductor", 0))
 	if n > 0:
 		_add_entry(entries, id_to_name, id_to_rarity, "superconductor", "%s x%d - Shock arcs +%d, radius +%d" % [name_of("superconductor","Superconductor", id_to_name), n, n, 12*n])
+
+	# Turret Power items
+	n = int(counts.get("toolkit", 0))
+	if n > 0:
+		var mul_t1 := pow(1.10, float(n))
+		_add_entry(entries, id_to_name, id_to_rarity, "toolkit", "%s x%d - +%d%% Turret Power (x%.2f)" % [name_of("toolkit","Toolkit", id_to_name), n, int(round((mul_t1-1.0)*100.0)), mul_t1])
+	n = int(counts.get("engineer_manual", 0))
+	if n > 0:
+		var mul_t2 := pow(1.20, float(n))
+		_add_entry(entries, id_to_name, id_to_rarity, "engineer_manual", "%s x%d - +%d%% Turret Power (x%.2f)" % [name_of("engineer_manual","Engineer Manual", id_to_name), n, int(round((mul_t2-1.0)*100.0)), mul_t2])
 
 	# Turret queued display
 	n = int(counts.get("turret", 0))
