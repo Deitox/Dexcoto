@@ -26,6 +26,7 @@ var lifesteal_per_kill: int = 0
 var elemental_damage_mult: float = 1.0
 var explosive_power_mult: float = 1.0
 var turret_power_mult: float = 1.0
+var turret_projectile_speed_mult: float = 1.0
 
 # Item ownership counts (by item id)
 var item_counts: Dictionary = {}
@@ -331,7 +332,7 @@ func equip_weapon(w: Dictionary) -> void:
 			inst["damage"] = int(round(int(inst["damage"]) * 1.25))
 			inst["fire_interval"] = float(inst["fire_interval"]) * 0.9
 			if t % 3 == 0:
-				inst["projectiles"] = int(inst["projectiles"]) + 1
+				inst["projectiles"] = int(inst["projectiles"]) + 2
 	weapons.append(inst)
 	var added_index: int = weapons.size() - 1
 	var merge_info: Dictionary = _try_merge_weapon(String(inst["id"]))
@@ -402,7 +403,7 @@ func _try_merge_weapon(id: String) -> Dictionary:
 				new_inst["damage"] = int(round(int(new_inst["damage"]) * 1.25))
 				new_inst["fire_interval"] = float(new_inst["fire_interval"]) * 0.9
 				if new_tier % 3 == 0:
-					new_inst["projectiles"] = int(new_inst["projectiles"]) + 1
+					new_inst["projectiles"] = int(new_inst["projectiles"]) + 2
 				new_inst["cd"] = 0.0
 				weapons.append(new_inst)
 				any_merged = true

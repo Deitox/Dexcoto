@@ -36,8 +36,8 @@ Tiny Godot 4 arena-survivor prototype. Move, auto-aim at the nearest enemy, and 
 
 ## Systems & Features
 
-- Weapons (up to 6 slots): Auto-fire toward the nearest enemy. Three of the same weapon at the same tier merge into one of the next tier. Higher tiers increase damage and fire rate; every 3 tiers adds a projectile.
-- Items: Stackable effects like attack speed, regen, lifesteal, +projectiles, currency gain, projectile speed, max HP, and placing turrets for the next wave.
+- Weapons (up to 6 slots): Auto-fire toward the nearest enemy. Three of the same weapon at the same tier merge into one of the next tier. Higher tiers increase damage and fire rate; every 3 tiers add two projectiles.
+- Items: Stackable effects like attack speed, regen, lifesteal, currency gain, projectile speed, max HP, placing turrets for the next wave, and turret-specific stats (Turret Power, Turret Projectile Speed).
 - Turrets: Stationary allies purchased in the shop or spawned by certain weapons on kill. If too many accumulate, groups of 3 same-tier turrets merge up to keep counts reasonable. Turret damage scales with your Turret Power stat.
 - Projectiles & Beams: Excessive projectile counts are capped; overflow converts into proportional damage. Very fast shots convert into short-lived beams to reduce object churn. The beam threshold is configurable in `scripts/bullet_pool.gd`.
 - Enemies & Boss: Enemies scale by tier; bosses scale by wave. Kills grant score, XP, and currency based on enemy power.
@@ -64,8 +64,8 @@ Some weapons grant stacking bonuses on kill. Higher tiers require fewer kills fo
 ## Content Overview
 
 - Weapons (selection): Pistol, SMG, Shotgun, Rifle, Minigun, Cannon, Laser, Railgun, Flamethrower (Fire), Cryo Blaster (Cryo), Shock Rifle (Shock), Void Projector (Void), Boomerang, Crossbow, Burst Pistol, Splitter, Cannon Mk.II, Berserker (stacking damage), Tempo (stacking attack speed), Bulwark (stacking max HP), Constructor (spawns turrets on kill).
-- Items (selection): Money Charm, Turret, Scope, Overcharger, Adrenaline, Lifesteal Charm, Boots, Caffeine, Ammo Belt, Aerodynamics, Protein Bar, Medkit, Greed Token, Vampiric Orb, Power Core, Stabilizer, Toolkit (+Turret Power), Engineer Manual (+Turret Power).
-- Upgrades: Weighted by rarity (Common through Legendary). Categories include Attack Speed, Damage, Move Speed, Max HP, Projectile Speed, Regeneration, +Projectiles, Elemental Power, and Turret Power.
+- Items (selection): Money Charm, Turret, Overcharger, Adrenaline, Lifesteal Charm, Boots, Caffeine, Aerodynamics, Protein Bar, Medkit, Greed Token, Vampiric Orb, Power Core, Stabilizer, Toolkit (+Turret Power), Engineer Manual (+Turret Power), Servomotors (+Turret Projectile Speed), Gyro Stabilizer (+Turret Projectile Speed).
+- Upgrades: Weighted by rarity (Common through Legendary). Categories include Attack Speed, Damage, Move Speed, Max HP, Projectile Speed, Regeneration, Elemental Power, and Turret Power. Bonus projectiles now only come from weapon tier upgrades every 3 tiers (adds two).
 - Elemental Power: Boosts elemental weapons' damage and effect chance/potency.
 - Turret Power: Boosts turret damage.
 

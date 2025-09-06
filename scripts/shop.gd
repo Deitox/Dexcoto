@@ -99,8 +99,7 @@ const ITEMS: Array[Dictionary] = [
 		 "desc":"Earn 20% more currency."},
 		{"kind":"item","id":"turret","name":"Turret","cost":18,"rarity":"Rare",
 		 "desc":"Place a stationary turret next wave."},
-		{"kind":"item","id":"scope","name":"Scope","cost":10,"rarity":"Uncommon",
-		 "desc":"+1 projectile to all weapons."},
+		
 		{"kind":"item","id":"overcharger","name":"Overcharger","cost":14,"rarity":"Rare",
 		 "desc":"+15% attack speed."},
 		{"kind":"item","id":"adrenaline","name":"Adrenaline","cost":10,"rarity":"Common",
@@ -112,8 +111,7 @@ const ITEMS: Array[Dictionary] = [
 		 "desc":"+10% move speed."},
 		{"kind":"item","id":"caffeine","name":"Caffeine","cost":12,"rarity":"Uncommon",
 		 "desc":"+10% attack speed."},
-		{"kind":"item","id":"ammo_belt","name":"Ammo Belt","cost":12,"rarity":"Uncommon",
-		 "desc":"+1 projectile to all weapons."},
+		
 		{"kind":"item","id":"aerodynamics","name":"Aerodynamics","cost":10,"rarity":"Common",
 		 "desc":"+20% projectile speed."},
 		{"kind":"item","id":"protein_bar","name":"Protein Bar","cost":10,"rarity":"Common",
@@ -146,6 +144,11 @@ const ITEMS: Array[Dictionary] = [
 		 "desc":"Explosions may apply a random elemental effect in the blast."},
 		{"kind":"item","id":"superconductor","name":"Superconductor","cost":22,"rarity":"Epic",
 		 "desc":"Shock effects arc to more targets and reach farther."},
+		# Turret projectile speed items (infrequent)
+		{"kind":"item","id":"turret_servos","name":"Servomotors","cost":16,"rarity":"Rare",
+		 "desc":"+20% Turret Projectile Speed."},
+		{"kind":"item","id":"gyro_stabilizer","name":"Gyro Stabilizer","cost":22,"rarity":"Epic",
+		 "desc":"+35% Turret Projectile Speed."},
 		# Turret Power items
 		{"kind":"item","id":"toolkit","name":"Toolkit","cost":12,"rarity":"Uncommon",
 		 "desc":"+10% Turret Power."},

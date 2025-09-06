@@ -122,18 +122,23 @@ func _shoot(pos: Vector2) -> void:
 		var tpm: float = float(player.get("turret_power_mult"))
 		if tpm > 0.0:
 			dmg = int(round(float(dmg) * max(0.1, tpm)))
+	var spd_to_use: float = speed
+	if player and player.has_method("get"):
+		var tpsm: float = float(player.get("turret_projectile_speed_mult"))
+		if tpsm > 0.0:
+			spd_to_use = speed * tpsm
 	var fx: Dictionary = {"source": {"kind":"turret"}}
 	if bullet_pool and bullet_pool.has_method("spawn_bullet"):
-		bullet_pool.call("spawn_bullet", global_position + dir * 16.0, dir, speed, dmg, color, 2.0, fx)
+		bullet_pool.call("spawn_bullet", global_position + dir * 16.0, dir, spd_to_use, dmg, color, 2.0, fx)
 	else:
 		var b = bullet_scene.instantiate()
 		get_tree().current_scene.add_child(b)
 		if b.has_method("activate"):
-			b.call("activate", global_position + dir * 16.0, dir, speed, dmg, color, 2.0, null, fx)
+			b.call("activate", global_position + dir * 16.0, dir, spd_to_use, dmg, color, 2.0, null, fx)
 		else:
 			b.global_position = global_position + dir * 16.0
 			b.direction = dir
-			b.speed = speed
+			b.speed = spd_to_use
 			b.damage = dmg
 			b.color = color
 

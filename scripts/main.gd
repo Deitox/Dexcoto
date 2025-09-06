@@ -677,9 +677,8 @@ func _on_shop_buy(index: int) -> void:
 					if player:
 						player.add_item("turret")
 				"scope":
-					if player:
-						player.projectiles_per_shot += 1
-						player.add_item("scope")
+					# Deprecated: bonus projectiles now only come from weapon tiers
+					pass
 				"overcharger":
 					if player:
 						player.attack_speed_mult *= 1.15
@@ -701,9 +700,8 @@ func _on_shop_buy(index: int) -> void:
 						player.attack_speed_mult *= 1.10
 						player.add_item("caffeine")
 				"ammo_belt":
-					if player:
-						player.projectiles_per_shot += 1
-						player.add_item("ammo_belt")
+					# Deprecated: bonus projectiles now only come from weapon tiers
+					pass
 				"aerodynamics":
 					if player:
 						player.projectile_speed_mult *= 1.20
@@ -745,6 +743,14 @@ func _on_shop_buy(index: int) -> void:
 				"superconductor":
 					if player:
 						player.add_item("superconductor")
+				"turret_servos":
+					if player:
+						player.turret_projectile_speed_mult *= 1.20
+						player.add_item("turret_servos")
+				"gyro_stabilizer":
+					if player:
+						player.turret_projectile_speed_mult *= 1.35
+						player.add_item("gyro_stabilizer")
 				"toolkit":
 					if player:
 						player.turret_power_mult *= 1.10

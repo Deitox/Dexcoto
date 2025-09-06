@@ -54,9 +54,6 @@ func _refresh() -> void:
 		_add_entry(entries, id_to_name, id_to_rarity, "money_charm", "%s x%d - +%d%% currency (x%.2f)" % [name_of("money_charm","Money Charm", id_to_name), n, int(round((mul-1.0)*100.0)), mul])
 
 	# Core combat items
-	n = int(counts.get("scope", 0))
-	if n > 0:
-		_add_entry(entries, id_to_name, id_to_rarity, "scope", "%s x%d - +%d projectiles" % [name_of("scope","Scope", id_to_name), n, n])
 	n = int(counts.get("overcharger", 0))
 	if n > 0:
 		var mul_o := pow(1.15, float(n))
@@ -77,9 +74,16 @@ func _refresh() -> void:
 	if n > 0:
 		var mul_c := pow(1.10, float(n))
 		_add_entry(entries, id_to_name, id_to_rarity, "caffeine", "%s x%d - +%d%% attack speed (x%.2f)" % [name_of("caffeine","Caffeine", id_to_name), n, int(round((mul_c-1.0)*100.0)), mul_c])
-	n = int(counts.get("ammo_belt", 0))
+
+	# Turret projectile speed items
+	n = int(counts.get("turret_servos", 0))
 	if n > 0:
-		_add_entry(entries, id_to_name, id_to_rarity, "ammo_belt", "%s x%d - +%d projectiles" % [name_of("ammo_belt","Ammo Belt", id_to_name), n, n])
+		var mul_ts := pow(1.20, float(n))
+		_add_entry(entries, id_to_name, id_to_rarity, "turret_servos", "%s x%d - +%d%% Turret Projectile Speed (x%.2f)" % [name_of("turret_servos","Servomotors", id_to_name), n, int(round((mul_ts-1.0)*100.0)), mul_ts])
+	n = int(counts.get("gyro_stabilizer", 0))
+	if n > 0:
+		var mul_gs := pow(1.35, float(n))
+		_add_entry(entries, id_to_name, id_to_rarity, "gyro_stabilizer", "%s x%d - +%d%% Turret Projectile Speed (x%.2f)" % [name_of("gyro_stabilizer","Gyro Stabilizer", id_to_name), n, int(round((mul_gs-1.0)*100.0)), mul_gs])
 	n = int(counts.get("aerodynamics", 0))
 	if n > 0:
 		var mul_a := pow(1.20, float(n))

@@ -43,10 +43,6 @@ static func all() -> Array[Dictionary]:
 		{"id":"reg_1_0","name":"Regen +1.0/s","rarity":"Uncommon","type":"regen","value":1.0},
 		{"id":"reg_1_5","name":"Regen +1.5/s","rarity":"Rare","type":"regen","value":1.5},
 		{"id":"reg_2_0","name":"Regen +2.0/s","rarity":"Epic","type":"regen","value":2.0},
-		# Projectiles (multishot)
-		{"id":"proj_1","name":"+1 Projectile","rarity":"Uncommon","type":"projectiles","value":1},
-		{"id":"proj_2","name":"+2 Projectiles","rarity":"Rare","type":"projectiles","value":2},
-		{"id":"proj_3","name":"+3 Projectiles","rarity":"Epic","type":"projectiles","value":3},
 		# Additional buffs for variety
 		{"id":"as_8","name":"Attack Speed +8%","rarity":"Common","type":"attack_speed","value":0.08},
 		{"id":"dmg_15","name":"Damage +15%","rarity":"Uncommon","type":"damage","value":0.15},
