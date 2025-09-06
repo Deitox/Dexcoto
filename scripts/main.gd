@@ -69,6 +69,7 @@ func _refresh_stats_panel_now() -> void:
 @onready var character_panel: Control = $UI/CharacterSelect
 @onready var char_title: Label = $UI/CharacterSelect/VBox/Title
 @onready var char_opts: GridContainer = $UI/CharacterSelect/VBox/Options
+@onready var char_diff: OptionButton = $UI/CharacterSelect/VBox/DifficultyRow/Difficulty
 
 # Use global class UpgradeDB (from upgrades.gd)
 const ShopLib = preload("res://scripts/shop.gd")
@@ -110,6 +111,27 @@ var shop_offers: Array[Dictionary] = []
 var pending_turrets: int = 0
 var enemy_pool: Node = null
 var turret_pool: Node = null
+
+# Difficulty
+@export_enum("Easy", "Normal", "Hard", "Insane") var difficulty: String = "Normal"
+
+func _difficulty_params() -> Dictionary:
+	# Returns multipliers and knobs per difficulty
+	# count_mult: scales number of enemies per spawn tick
+	# cadence_mult: scales spawn timer interval (higher = slower spawns)
+	# tier_bonus: flat tier offset (applied on top of wave-based tier)
+	# cap_mult: scales soft/hard caps used when adjusting pressure
+	# group_max: max size of a spawn group
+	var d := String(difficulty)
+	match d:
+		"Easy":
+			return {"count_mult": 0.75, "cadence_mult": 1.15, "tier_bonus": -1, "cap_mult": 0.85, "group_max": 5}
+		"Hard":
+			return {"count_mult": 1.25, "cadence_mult": 0.90, "tier_bonus": 1, "cap_mult": 1.15, "group_max": 6}
+		"Insane":
+			return {"count_mult": 1.50, "cadence_mult": 0.80, "tier_bonus": 2, "cap_mult": 1.30, "group_max": 7}
+		_:
+			return {"count_mult": 1.00, "cadence_mult": 1.00, "tier_bonus": 0, "cap_mult": 1.00, "group_max": 5}
 
 func _ready() -> void:
 	randomize()
@@ -253,20 +275,26 @@ func _active_enemies_count() -> int:
 	return total
 
 func _spawn_enemies() -> void:
-	var base_count := 2 + int(round(float(wave) * 1.5))
+	# Stronger quantity curve
+	var base_count := 3 + int(round(float(wave) * 2.0))
 
 	var enemies := _active_enemies_count()
-	var soft_cap := SOFT_CAP_ENEMIES
-	var count := base_count
-	# Scale enemy power with wave to avoid excessive counts
-	var tier := 1 + int(floor(max(0.0, float(wave - 1)) / 3.0))
+	var dp: Dictionary = _difficulty_params()
+	var soft_cap := int(round(float(SOFT_CAP_ENEMIES) * float(dp.get("cap_mult", 1.0))))
+	var hard_cap := int(round(float(MAX_ENEMIES) * float(dp.get("cap_mult", 1.0))))
+	var count := int(round(float(base_count) * float(dp.get("count_mult", 1.0))))
+
+	# Tier now increases every 2 waves for higher HP ramp, plus difficulty bonus
+	var tier := 1 + int(floor(max(0.0, float(wave - 1)) / 2.0)) + int(dp.get("tier_bonus", 0))
+	tier = max(1, tier)
+
 	if enemies > soft_cap:
 		# reduce count and increase tier to keep pressure without clutter
 		var over := enemies - soft_cap
 		count = max(1, int(round(float(base_count) * 0.4)))
 		tier += min(3, int(floor(float(over) / 20.0)) + 1)
 	# Hard cap: never exceed MAX_ENEMIES active
-	var allowed: int = max(0, MAX_ENEMIES - enemies)
+	var allowed: int = max(0, hard_cap - enemies)
 	count = min(count, allowed)
 	for i in range(count):
 		var pos := _random_spawn_position()
@@ -282,24 +310,30 @@ func _spawn_enemies() -> void:
 
 func _spawn_enemies_grouped() -> void:
 	# Compute baseline like _spawn_enemies(), but spawn a smaller group with telegraphs and stagger.
-	var base_count := 2 + int(round(float(wave) * 1.5))
+	var base_count := 3 + int(round(float(wave) * 2.0))
 	var enemies := _active_enemies_count()
-	var soft_cap := SOFT_CAP_ENEMIES
-	var count := base_count
-	var tier := 1 + int(floor(max(0.0, float(wave - 1)) / 3.0))
+	var dp: Dictionary = _difficulty_params()
+	var soft_cap := int(round(float(SOFT_CAP_ENEMIES) * float(dp.get("cap_mult", 1.0))))
+	var hard_cap := int(round(float(MAX_ENEMIES) * float(dp.get("cap_mult", 1.0))))
+	var count := int(round(float(base_count) * float(dp.get("count_mult", 1.0))))
+
+	# Tier increases every 2 waves, plus difficulty bonus
+	var tier := 1 + int(floor(max(0.0, float(wave - 1)) / 2.0)) + int(dp.get("tier_bonus", 0))
+	tier = max(1, tier)
+
 	if enemies > soft_cap:
 		var over := enemies - soft_cap
 		count = max(1, int(round(float(base_count) * 0.4)))
 		tier += min(3, int(floor(float(over) / 20.0)) + 1)
-	var allowed: int = max(0, MAX_ENEMIES - enemies)
+	var allowed: int = max(0, hard_cap - enemies)
 	count = min(count, allowed)
 	if count <= 0:
 		# Back off next group
 		spawn_timer.wait_time = min(3.5, spawn_timer.wait_time * 1.2)
 		return
-	# Choose a group size and positions
+	# Choose a group size and positions (slightly larger groups later)
 	var gmin := 2
-	var gmax := 5
+	var gmax := int(dp.get("group_max", 5))
 	var gsize: int = int(clamp(randi() % (gmax - gmin + 1) + gmin, 1, max(1, count)))
 	var positions: Array = []
 	for i in range(gsize):
@@ -334,11 +368,13 @@ func _spawn_enemies_grouped() -> void:
 
 func _adjust_spawning() -> void:
 	var enemies := _active_enemies_count()
-	var soft_cap := SOFT_CAP_ENEMIES
+	var dp: Dictionary = _difficulty_params()
+	var soft_cap := int(round(float(SOFT_CAP_ENEMIES) * float(dp.get("cap_mult", 1.0))))
 	if enemies > soft_cap:
 		spawn_timer.wait_time = min(3.0, spawn_timer.wait_time * 1.25)
 	else:
 		spawn_timer.wait_time = max(0.25, spawn_timer.wait_time * 0.95)
+
 
 func _random_spawn_position() -> Vector2:
 	if arena_bounds and arena_bounds.has_method("get_arena_rect"):
@@ -379,7 +415,8 @@ func _update_ui() -> void:
 	if ui_health:
 		ui_health.text = "HP: %d" % player.health
 	if ui_wave:
-		ui_wave.text = "  |  Wave: %d" % wave
+		var diff_label := String(difficulty)
+		ui_wave.text = "  |  Wave: %d  (%s)" % [wave, diff_label]
 	if ui_time:
 		ui_time.text = "  |  Time: %d" % int(max(0.0, wave_time - elapsed))
 	if ui_score:
@@ -854,7 +891,11 @@ func _start_next_wave() -> void:
 	_balance_turrets()
 	_update_ui()
 	wave_timer.start()
-	spawn_timer.wait_time = max(0.25, 1.0 - float(wave) * 0.08)
+	# Faster spawn cadence baseline for stronger pressure, scaled by difficulty
+	var base_wait: float = max(0.20, 0.9 - float(wave) * 0.09)
+	var dp: Dictionary = _difficulty_params()
+	var cadence_mult: float = float(dp.get("cadence_mult", 1.0))
+	spawn_timer.wait_time = clamp(base_wait * cadence_mult, 0.12, 3.0)
 	spawn_timer.start()
 	# Spawn a boss every 5th wave (5,10,15,...) once per wave
 	if wave % 5 == 0:
@@ -960,6 +1001,8 @@ func _begin_first_wave_after_character() -> void:
 func _show_character_select() -> void:
 	# Build options from weapons list (plus Starter)
 	character_panel.visible = true
+	# Setup difficulty option button
+	_setup_difficulty_widget()
 	# Clear existing buttons
 	for c in char_opts.get_children():
 		c.queue_free()
@@ -999,6 +1042,28 @@ func _on_character_chosen(ch: Dictionary) -> void:
 		player.weapons.clear()
 		player.equip_weapon(Dictionary(ch["weapon"]))
 	_begin_first_wave_after_character()
+
+func _setup_difficulty_widget() -> void:
+	if char_diff == null:
+		return
+	char_diff.clear()
+	var opts := ["Easy", "Normal", "Hard", "Insane"]
+	for i in range(opts.size()):
+		char_diff.add_item(opts[i], i)
+	# select current difficulty
+	var idx := opts.find(String(difficulty))
+	if idx == -1:
+		idx = 1 # Normal
+	char_diff.select(idx)
+	# connect change handler once
+	if not char_diff.is_connected("item_selected", Callable(self, "_on_difficulty_selected")):
+		char_diff.item_selected.connect(_on_difficulty_selected)
+
+func _on_difficulty_selected(index: int) -> void:
+	var opts := ["Easy", "Normal", "Hard", "Insane"]
+	var idx = clamp(index, 0, opts.size() - 1)
+	difficulty = String(opts[idx])
+	_update_ui()
 
 @onready var hud_slot1: Label = $UI/WeaponsPanel/VBox/Slot1
 @onready var hud_slot2: Label = $UI/WeaponsPanel/VBox/Slot2

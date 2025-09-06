@@ -113,6 +113,37 @@ Some weapons grant stacking bonuses on kill. Higher tiers require fewer kills fo
 - Formatting helper: `normalize_gd_tabs.py` for consistent GDScript indentation.
 - Useful groups/pools: `enemy_pool`, `turret_pool`, `projectiles`, `enemies`.
 
+### GDScript “:=” Inference Fixers
+
+Strict projects can fail on the warning “The variable type is being inferred from a Variant value…” when using `:=`. The tools below help suppress or target those safely:
+
+- `tools/fix_gd_inference.py`:
+  - Broad sweep. Rewrites single‑line `var name := expr` to `var name = expr` (preserves decorators and type hints), across all `.gd` files.
+  - Usage:
+    - Preview: `python tools/fix_gd_inference.py --report`
+    - Apply: `python tools/fix_gd_inference.py --write [path]`
+
+- `tools/fix_gd_inference_conservative.py`:
+  - Conservative pass. Only rewrites when RHS “smells Variant‑y” (e.g., `get_node`, `.get(`, `.call(`, `load`, timers/tweens, etc.). Skips typed declarations by default.
+  - Usage:
+    - Preview: `python tools/fix_gd_inference_conservative.py --report`
+    - Apply: `python tools/fix_gd_inference_conservative.py --write [path]`
+    - Options: `--include-typed`, `--extra-token TOKEN`, `--list-patterns`
+
+- `tools/fix_gd_inference_strict.py`:
+  - CI‑friendly strict mode with line‑ending preservation, excludes, git‑scoped modes, backups, and prompts.
+  - Defaults focus on dynamic APIs (node lookups, dynamic calls, resource loads; excludes math built‑ins).
+  - Usage:
+    - Preview (non‑zero exit if fixable): `python tools/fix_gd_inference_strict.py --report`
+    - Apply to tracked files with backups: `python tools/fix_gd_inference_strict.py --write --git-tracked --backup`
+    - Apply to a folder with confirm prompts: `python tools/fix_gd_inference_strict.py --write path/to/dir --confirm`
+    - Options: `--exclude`, `--git-tracked | --staged | --changed-only`, `--include-typed`, `--extra-token`, `--list-patterns`, `--dry-run`
+
+Recommended workflow:
+1) Commit (or stash) changes.
+2) Run a preview (`--report` / `--dry-run`) and review output.
+3) Apply to a small subtree, build/test, then broaden scope.
+
 ## Modding
 
 - See  `MODDING_SDK_README.md` for mod support, licenses (`MODDING_LICENSE.txt`), and third-party notices. 
