@@ -196,6 +196,8 @@ func _fire_weapon_at(w: Dictionary, pos: Vector2) -> void:
 	# Include current fire interval after attack speed so beams can estimate DPS
 	var current_interval: float = float(w.get("fire_interval", 0.4)) / max(0.1, attack_speed_mult)
 	effect["fire_interval"] = current_interval
+	# Provide shooter path so beams can attach to the firing node
+	effect["shooter_path"] = get_path()
 	# Cap total projectiles and convert overflow into proportional damage
 	if shots > MAX_TOTAL_PROJECTILES:
 		var scale_up: float = float(shots) / float(MAX_TOTAL_PROJECTILES)

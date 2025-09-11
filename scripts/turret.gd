@@ -131,6 +131,7 @@ func _shoot(pos: Vector2) -> void:
 	if bullet_pool and bullet_pool.has_method("spawn_bullet"):
 		# Provide current fire interval for beam DPS estimate
 		fx["fire_interval"] = float(fire_interval)
+		fx["shooter_path"] = get_path()
 		bullet_pool.call("spawn_bullet", global_position + dir * 16.0, dir, spd_to_use, dmg, color, 2.0, fx)
 	else:
 		var b = bullet_scene.instantiate()

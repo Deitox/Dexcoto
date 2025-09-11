@@ -20,6 +20,8 @@ var _last_end_point: Vector2 = Vector2.ZERO
 var _last_channel_time: float = 0.0
 var _linger_after_no_target: float = 0.4
 var _current_interval: float = 0.2
+var _shooter: Node = null
+var _shooter_path: NodePath = NodePath("")
 
 @onready var line: Line2D = $Line2D
 
@@ -86,6 +88,15 @@ func _physics_process(delta: float) -> void:
 	if _channel:
 		# Update beam endpoint to current target position; if lost, end.
 		var from_local: Vector2 = Vector2.ZERO
+		# Attach origin to shooter if available
+		if _shooter != null:
+			if is_instance_valid(_shooter):
+				global_position = _shooter.global_position
+			elif String(_shooter_path) != "":
+				var s = get_node_or_null(_shooter_path)
+				if s != null:
+					_shooter = s
+					global_position = _shooter.global_position
 		if _target == null or not is_instance_valid(_target):
 			# Try to retarget along last aim direction (cone + ray). Linger while shooter continues channeling.
 			var ret: Array = _raycast_enemy(global_position, _aim_dir)
@@ -161,6 +172,10 @@ func activate_channel(pos: Vector2, dir: Vector2, dps: float, col: Color, effect
 		_current_interval = max(0.02, float(_effect["fire_interval"]))
 	_linger_after_no_target = clamp(_current_interval * 2.5, 0.3, 1.2)
 	_last_channel_time = float(Time.get_ticks_msec()) / 1000.0
+	# Resolve shooter (for attaching origin)
+	if _effect is Dictionary and _effect.has("shooter_path"):
+		_shooter_path = NodePath(String(_effect["shooter_path"]))
+		_shooter = get_node_or_null(_shooter_path)
 	if line:
 		line.default_color = color
 	var res := _raycast_enemy(pos, _aim_dir)
@@ -187,6 +202,9 @@ func channel(pos: Vector2, _dir: Vector2, dps: float, col: Color, effect: Dictio
 		_current_interval = max(0.02, float(_effect["fire_interval"]))
 	_linger_after_no_target = clamp(_current_interval * 2.5, 0.3, 1.2)
 	_last_channel_time = float(Time.get_ticks_msec()) / 1000.0
+	if _shooter == null and _effect is Dictionary and _effect.has("shooter_path"):
+		_shooter_path = NodePath(String(_effect["shooter_path"]))
+		_shooter = get_node_or_null(_shooter_path)
 	if line:
 		line.default_color = color
 
