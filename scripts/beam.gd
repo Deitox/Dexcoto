@@ -16,8 +16,10 @@ var _tick_interval: float = 0.1
 var _target: Node = null
 var _beam_key: String = ""
 var _aim_dir: Vector2 = Vector2.RIGHT
-var _no_target_time: float = 0.0
 var _last_end_point: Vector2 = Vector2.ZERO
+var _last_channel_time: float = 0.0
+var _linger_after_no_target: float = 0.4
+var _current_interval: float = 0.2
 
 @onready var line: Line2D = $Line2D
 
@@ -85,7 +87,7 @@ func _physics_process(delta: float) -> void:
 		# Update beam endpoint to current target position; if lost, end.
 		var from_local: Vector2 = Vector2.ZERO
 		if _target == null or not is_instance_valid(_target):
-			# Try to retarget along last aim direction; linger briefly to avoid flicker
+			# Try to retarget along last aim direction (cone + ray). Linger while shooter continues channeling.
 			var ret: Array = _raycast_enemy(global_position, _aim_dir)
 			var new_tgt: Node = null
 			var endp: Vector2 = _last_end_point
@@ -96,10 +98,9 @@ func _physics_process(delta: float) -> void:
 			if new_tgt != null:
 				_target = new_tgt
 				_last_end_point = endp
-				_no_target_time = 0.0
 			else:
-				_no_target_time += delta
-				if _no_target_time > 0.2:
+				var now := float(Time.get_ticks_msec()) / 1000.0
+				if now - _last_channel_time > _linger_after_no_target:
 					_free_and_notify()
 					return
 		var to_point: Vector2 = (_target.global_position - global_position) if (_target != null and is_instance_valid(_target)) else (_last_end_point - global_position)
@@ -149,6 +150,11 @@ func activate_channel(pos: Vector2, dir: Vector2, dps: float, col: Color, effect
 	_channel = true
 	_beam_key = beam_key
 	_aim_dir = dir.normalized()
+	# Read current firing interval for linger heuristic
+	if _effect is Dictionary and _effect.has("fire_interval"):
+		_current_interval = max(0.02, float(_effect["fire_interval"]))
+	_linger_after_no_target = clamp(_current_interval * 2.5, 0.3, 1.2)
+	_last_channel_time = float(Time.get_ticks_msec()) / 1000.0
 	if line:
 		line.default_color = color
 	var res := _raycast_enemy(pos, _aim_dir)
@@ -170,7 +176,11 @@ func channel(pos: Vector2, _dir: Vector2, dps: float, col: Color, effect: Dictio
 	color = col
 	_effect = effect if effect != null else _effect
 	_aim_dir = _dir.normalized()
-	_no_target_time = 0.0
+	# Update interval + last channel time for linger logic
+	if _effect is Dictionary and _effect.has("fire_interval"):
+		_current_interval = max(0.02, float(_effect["fire_interval"]))
+	_linger_after_no_target = clamp(_current_interval * 2.5, 0.3, 1.2)
+	_last_channel_time = float(Time.get_ticks_msec()) / 1000.0
 	if line:
 		line.default_color = color
 
