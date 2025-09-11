@@ -85,3 +85,25 @@ func activate(pos: Vector2, wave: int, tgt: Node2D) -> void:
 		body_shape.set_deferred("disabled", false)
 	if poly:
 		poly.visible = true
+
+# Visual hit feedback: floating numbers for boss
+func show_damage_feedback(amount: int, is_crit: bool, at: Vector2, custom_color: Color = Color(0,0,0,0), font_size: int = -1) -> void:
+	var label := Label.new()
+	label.text = str(amount)
+	var fsize := 26 if is_crit else 20
+	if font_size > 0:
+		fsize = font_size
+	label.add_theme_font_size_override("font_size", fsize)
+	var base_col := Color(1.0, 0.9, 0.2) if is_crit else Color(1,1,1)
+	var use_col := base_col if custom_color.a <= 0.0 else custom_color
+	label.add_theme_color_override("font_color", use_col)
+	var parent := get_tree().current_scene
+	if parent == null:
+		return
+	parent.add_child(label)
+	label.global_position = at + Vector2(randf_range(-6,6), -12)
+	label.z_index = 3000
+	var tw := label.create_tween()
+	tw.tween_property(label, "position:y", label.position.y - 18.0, 0.30).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tw.parallel().tween_property(label, "modulate:a", 0.0, 0.32)
+	tw.tween_callback(label.queue_free)

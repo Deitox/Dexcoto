@@ -84,6 +84,8 @@ func _physics_process(_delta: float) -> void:
 		if tick > 0:
 			ignite_accum -= float(tick)
 			take_damage(tick)
+			# Burn DoT floating text (orange, slightly smaller)
+			show_damage_feedback(tick, false, global_position, Color(1.0, 0.55, 0.2), 16)
 	if freeze_time > 0.0:
 		freeze_time = max(0.0, freeze_time - delta)
 	if void_time > 0.0:
@@ -223,12 +225,17 @@ func _apply_shock_arcs(base_damage: int, count: int, radius: float, factor: floa
 				_spawn_shock_arc(global_position, pos)
 
 # Visual hit feedback: floating numbers + quick ring flash
-func show_damage_feedback(amount: int, is_crit: bool, at: Vector2) -> void:
+func show_damage_feedback(amount: int, is_crit: bool, at: Vector2, custom_color: Color = Color(0,0,0,0), font_size: int = -1) -> void:
 	# Floating number
 	var label := Label.new()
 	label.text = str(amount)
-	label.add_theme_font_size_override("font_size", 24 if is_crit else 18)
-	label.add_theme_color_override("font_color", Color(1.0, 0.9, 0.2) if is_crit else Color(1,1,1))
+	var fsize := 24 if is_crit else 18
+	if font_size > 0:
+		fsize = font_size
+	label.add_theme_font_size_override("font_size", fsize)
+	var base_col := Color(1.0, 0.9, 0.2) if is_crit else Color(1,1,1)
+	var use_col := base_col if custom_color.a <= 0.0 else custom_color
+	label.add_theme_color_override("font_color", use_col)
 	var parent := get_tree().current_scene
 	if parent == null:
 		return
