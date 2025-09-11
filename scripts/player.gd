@@ -26,6 +26,9 @@ var lifesteal_per_kill: int = 0
 var crit_chance: float = 0.0 # 0.0 = 0%, 1.0 = 100%. Overflow >1.0 boosts crit damage.
 var crit_damage_mult: float = 1.5 # Damage multiplier applied on critical hits
 
+# Defense (incoming damage multiplier; <1.0 reduces damage taken)
+var incoming_damage_mult: float = 1.0
+
 # Elemental scaling (affects elemental weapons only)
 var elemental_damage_mult: float = 1.0
 var explosive_power_mult: float = 1.0
@@ -236,7 +239,8 @@ func _fire_weapon_at(w: Dictionary, pos: Vector2) -> void:
 					b2.color = color
 
 func take_damage(amount: int) -> void:
-	health -= amount
+	var final: int = int(max(1, round(float(amount) * max(0.05, incoming_damage_mult))))
+	health -= final
 	if health <= 0:
 		health = 0
 		emit_signal("died")
@@ -285,6 +289,11 @@ func apply_upgrade(upg: Dictionary) -> void:
 			projectile_speed_mult *= (1.0 + float(v))
 		"regen":
 			regen_per_second += float(v)
+		"defense":
+			# Reduce incoming damage by value (e.g., 0.10 => 10% less damage taken)
+			incoming_damage_mult *= max(0.0, 1.0 - float(v))
+			# Soft floor to avoid trivializing damage
+			incoming_damage_mult = max(0.20, incoming_damage_mult)
 		"projectiles":
 			var add: int = int(v)
 			for i in range(add):
@@ -493,6 +502,11 @@ func _apply_stack_effect(stype: String, conf: Dictionary) -> void:
 			var inc3: float = float(conf.get("per_stack", 0.02))
 			crit_chance += inc3
 			_show_stack_cue("+%d%% Crit Chance" % int(round(inc3*100.0)), Color(1.0,0.8,0.2))
+		"defense":
+			var inc4: float = float(conf.get("per_stack", 0.02))
+			incoming_damage_mult *= max(0.0, 1.0 - inc4)
+			incoming_damage_mult = max(0.20, incoming_damage_mult)
+			_show_stack_cue("-%d%% Damage Taken" % int(round(inc4*100.0)), Color(0.8,1.0,0.8))
 		"turret_spawn":
 			# Spawn a turret immediately near the player (not queued for next wave).
 			var pos := global_position + Vector2(randf_range(-80,80), randf_range(-80,80))

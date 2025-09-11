@@ -97,6 +97,11 @@ const WEAPONS: Array[Dictionary] = [
 		 "desc":"Kills grant +2% Crit Chance (overflow boosts crit damage).",
 		 "fire_interval":0.38, "damage":9, "speed":560, "projectiles":1, "color": Color(1.0,0.8,0.2),
 		 "stack": {"type":"crit_chance","per_stack":0.02,"base_kills":6}},
+		# New: Defense-stacking weapon
+		{"kind":"weapon","id":"guardian","name":"Guardian","cost":18,"rarity":"Rare",
+		 "desc":"Kills grant +2% Defense per stack (reduces damage taken).",
+		 "fire_interval":0.42, "damage":10, "speed":520, "projectiles":1, "color": Color(0.6,0.9,0.8),
+		 "stack": {"type":"defense","per_stack":0.02,"base_kills":6}},
 ]
 
 const ITEMS: Array[Dictionary] = [
@@ -140,6 +145,15 @@ const ITEMS: Array[Dictionary] = [
 		 "desc":"+30% Elemental Power."},
 		{"kind":"item","id":"arcanum","name":"Arcanum","cost":26,"rarity":"Legendary",
 		 "desc":"+40% Elemental Power."},
+		# Defense items
+		{"kind":"item","id":"kevlar_vest","name":"Kevlar Vest","cost":14,"rarity":"Uncommon",
+		 "desc":"-10% damage taken."},
+		{"kind":"item","id":"riot_armor","name":"Riot Armor","cost":18,"rarity":"Rare",
+		 "desc":"-15% damage taken."},
+		{"kind":"item","id":"plated_armor","name":"Plated Armor","cost":22,"rarity":"Epic",
+		 "desc":"-20% damage taken."},
+		{"kind":"item","id":"nanoshield","name":"Nanoshield","cost":26,"rarity":"Legendary",
+		 "desc":"-25% damage taken."},
 		# Cross-synergy items
 		{"kind":"item","id":"volatile_rounds","name":"Volatile Rounds","cost":16,"rarity":"Rare",
 		 "desc":"Non-explosive hits have a chance to explode."},

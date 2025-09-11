@@ -828,6 +828,26 @@ func _on_shop_buy(index: int) -> void:
 					if player:
 						player.elemental_damage_mult *= 1.40
 						player.add_item("arcanum")
+				"kevlar_vest":
+					if player:
+						player.incoming_damage_mult *= 0.90
+						player.incoming_damage_mult = max(0.20, player.incoming_damage_mult)
+						player.add_item("kevlar_vest")
+				"riot_armor":
+					if player:
+						player.incoming_damage_mult *= 0.85
+						player.incoming_damage_mult = max(0.20, player.incoming_damage_mult)
+						player.add_item("riot_armor")
+				"plated_armor":
+					if player:
+						player.incoming_damage_mult *= 0.80
+						player.incoming_damage_mult = max(0.20, player.incoming_damage_mult)
+						player.add_item("plated_armor")
+				"nanoshield":
+					if player:
+						player.incoming_damage_mult *= 0.75
+						player.incoming_damage_mult = max(0.20, player.incoming_damage_mult)
+						player.add_item("nanoshield")
 				_:
 					pass
 		_:

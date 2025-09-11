@@ -97,6 +97,10 @@ func refresh() -> void:
 	_add_kv(core, "Health", "%d/%d" % [hp, hp_max])
 	_add_kv(core, "Regen", "%.1f/s" % regen)
 	_add_kv(core, "Move Speed", "%.0f px/s" % move_spd)
+	# Defense / Damage taken multiplier
+	var dmg_taken_mult: float = float(player.get("incoming_damage_mult")) if player.has_method("get") else 1.0
+	if abs(dmg_taken_mult - 1.0) > 0.001:
+		_add_kv(core, "Damage Taken", "x%.2f (%s)" % [dmg_taken_mult, _pct(dmg_taken_mult)])
 
 	# Offense
 	_add_section_header("Offense", _tier_hex(3))

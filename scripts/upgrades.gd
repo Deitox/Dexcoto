@@ -64,6 +64,11 @@ static func all() -> Array[Dictionary]:
 		{"id":"tp_10","name":"Turret Power +10%","rarity":"Uncommon","type":"turret_power","value":0.10},
 		{"id":"tp_20","name":"Turret Power +20%","rarity":"Rare","type":"turret_power","value":0.20},
 		{"id":"tp_30","name":"Turret Power +30%","rarity":"Epic","type":"turret_power","value":0.30},
+		# Defense (reduces damage taken)
+		{"id":"def_10","name":"Defense +10%","rarity":"Uncommon","type":"defense","value":0.10},
+		{"id":"def_15","name":"Defense +15%","rarity":"Rare","type":"defense","value":0.15},
+		{"id":"def_20","name":"Defense +20%","rarity":"Epic","type":"defense","value":0.20},
+		{"id":"def_25","name":"Defense +25%","rarity":"Legendary","type":"defense","value":0.25},
 	]
 
 static func weighted_choices(count: int, exclude_ids: Array[String] = []) -> Array[Dictionary]:
