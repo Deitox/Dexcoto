@@ -15,6 +15,9 @@ var _tick_accum: float = 0.0
 var _tick_interval: float = 0.1
 var _target: Node = null
 var _beam_key: String = ""
+var _aim_dir: Vector2 = Vector2.RIGHT
+var _no_target_time: float = 0.0
+var _last_end_point: Vector2 = Vector2.ZERO
 
 @onready var line: Line2D = $Line2D
 
@@ -69,6 +72,7 @@ func activate(pos: Vector2, dir: Vector2, dmg: int, col: Color, effect: Dictiona
 			if _effect is Dictionary and _effect.size() > 0 and target.has_method("apply_elemental_effect"):
 				target.apply_elemental_effect(_effect, final_damage, end_point)
 	_set_line(Vector2.ZERO, (end_point - global_position))
+	_last_end_point = end_point
 	_time = 0.0
 	_active = true
 	visible = true
@@ -79,11 +83,26 @@ func _physics_process(delta: float) -> void:
 	_time += delta
 	if _channel:
 		# Update beam endpoint to current target position; if lost, end.
-		if _target == null or not is_instance_valid(_target):
-			_free_and_notify()
-			return
 		var from_local: Vector2 = Vector2.ZERO
-		var to_point: Vector2 = (_target.global_position - global_position)
+		if _target == null or not is_instance_valid(_target):
+			# Try to retarget along last aim direction; linger briefly to avoid flicker
+			var ret: Array = _raycast_enemy(global_position, _aim_dir)
+			var new_tgt: Node = null
+			var endp: Vector2 = _last_end_point
+			if ret.size() > 0:
+				new_tgt = ret[0]
+			if ret.size() > 1:
+				endp = Vector2(ret[1])
+			if new_tgt != null:
+				_target = new_tgt
+				_last_end_point = endp
+				_no_target_time = 0.0
+			else:
+				_no_target_time += delta
+				if _no_target_time > 0.2:
+					_free_and_notify()
+					return
+		var to_point: Vector2 = (_target.global_position - global_position) if (_target != null and is_instance_valid(_target)) else (_last_end_point - global_position)
 		_set_line(from_local, to_point)
 		# Apply tick DPS
 		_tick_accum += delta
@@ -129,10 +148,11 @@ func activate_channel(pos: Vector2, dir: Vector2, dps: float, col: Color, effect
 	_effect = effect if effect != null else {}
 	_channel = true
 	_beam_key = beam_key
+	_aim_dir = dir.normalized()
 	if line:
 		line.default_color = color
 	var space: PhysicsDirectSpaceState2D = get_world_2d().direct_space_state
-	var ndir: Vector2 = dir.normalized()
+	var ndir: Vector2 = _aim_dir
 	var from: Vector2 = pos + ndir * 8.0
 	var to: Vector2 = from + ndir * max_length
 	var query := PhysicsRayQueryParameters2D.create(from, to)
@@ -152,6 +172,7 @@ func activate_channel(pos: Vector2, dir: Vector2, dps: float, col: Color, effect
 		if target and target.is_in_group("enemies"):
 			_target = target
 	_set_line(Vector2.ZERO, (end_point - global_position))
+	_last_end_point = end_point
 	_time = 0.0
 	_active = true
 	visible = true
@@ -162,6 +183,8 @@ func channel(pos: Vector2, _dir: Vector2, dps: float, col: Color, effect: Dictio
 	_dps = max(_dps, dps)
 	color = col
 	_effect = effect if effect != null else _effect
+	_aim_dir = _dir.normalized()
+	_no_target_time = 0.0
 	if line:
 		line.default_color = color
 
@@ -171,3 +194,28 @@ func _free_and_notify() -> void:
 		if pool and pool.has_method("on_beam_freed"):
 			pool.call("on_beam_freed", _beam_key)
 	queue_free()
+
+# Helper raycast to find first enemy along direction. Returns [target, end_point]
+func _raycast_enemy(from_pos: Vector2, dir: Vector2) -> Array:
+	var space: PhysicsDirectSpaceState2D = get_world_2d().direct_space_state
+	var ndir: Vector2 = dir.normalized()
+	var from: Vector2 = from_pos + ndir * 8.0
+	var to: Vector2 = from + ndir * max_length
+	var query := PhysicsRayQueryParameters2D.create(from, to)
+	query.collide_with_areas = true
+	query.collide_with_bodies = true
+	query.hit_from_inside = false
+	var hit := space.intersect_ray(query)
+	var end_point: Vector2 = to
+	var found: Node = null
+	if hit and hit.has("position"):
+		end_point = Vector2(hit["position"])
+		var collider = hit.get("collider")
+		var target = collider
+		if target and not target.is_in_group("enemies") and target.get_parent():
+			var p = target.get_parent()
+			if p and p.is_in_group("enemies"):
+				target = p
+		if target and target.is_in_group("enemies"):
+			found = target
+	return [found, end_point]
