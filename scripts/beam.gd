@@ -151,26 +151,12 @@ func activate_channel(pos: Vector2, dir: Vector2, dps: float, col: Color, effect
 	_aim_dir = dir.normalized()
 	if line:
 		line.default_color = color
-	var space: PhysicsDirectSpaceState2D = get_world_2d().direct_space_state
-	var ndir: Vector2 = _aim_dir
-	var from: Vector2 = pos + ndir * 8.0
-	var to: Vector2 = from + ndir * max_length
-	var query := PhysicsRayQueryParameters2D.create(from, to)
-	query.collide_with_areas = true
-	query.collide_with_bodies = true
-	query.hit_from_inside = false
-	var hit := space.intersect_ray(query)
-	var end_point: Vector2 = to
-	if hit and hit.has("position"):
-		end_point = Vector2(hit["position"])
-		var collider = hit.get("collider")
-		var target = collider
-		if target and not target.is_in_group("enemies") and target.get_parent():
-			var p = target.get_parent()
-			if p and p.is_in_group("enemies"):
-				target = p
-		if target and target.is_in_group("enemies"):
-			_target = target
+	var res := _raycast_enemy(pos, _aim_dir)
+	var end_point: Vector2 = pos + _aim_dir * max_length
+	if res.size() > 0:
+		_target = res[0]
+	if res.size() > 1:
+		end_point = Vector2(res[1])
 	_set_line(Vector2.ZERO, (end_point - global_position))
 	_last_end_point = end_point
 	_time = 0.0
@@ -199,17 +185,21 @@ func _free_and_notify() -> void:
 func _raycast_enemy(from_pos: Vector2, dir: Vector2) -> Array:
 	var space: PhysicsDirectSpaceState2D = get_world_2d().direct_space_state
 	var ndir: Vector2 = dir.normalized()
-	var from: Vector2 = from_pos + ndir * 8.0
-	var to: Vector2 = from + ndir * max_length
-	var query := PhysicsRayQueryParameters2D.create(from, to)
-	query.collide_with_areas = true
-	query.collide_with_bodies = true
-	query.hit_from_inside = false
-	var hit := space.intersect_ray(query)
-	var end_point: Vector2 = to
-	var found: Node = null
-	if hit and hit.has("position"):
-		end_point = Vector2(hit["position"])
+	var start: Vector2 = from_pos + ndir * 8.0
+	var traveled: float = 0.0
+	var last_end: Vector2 = start + ndir * max_length
+	while traveled < max_length:
+		var remain: float = max_length - traveled
+		var to: Vector2 = start + ndir * remain
+		var query := PhysicsRayQueryParameters2D.create(start, to)
+		query.collide_with_areas = true
+		query.collide_with_bodies = true
+		query.hit_from_inside = false
+		var hit := space.intersect_ray(query)
+		if not hit or not hit.has("position"):
+			break
+		var hit_pos: Vector2 = Vector2(hit["position"]) 
+		last_end = hit_pos
 		var collider = hit.get("collider")
 		var target = collider
 		if target and not target.is_in_group("enemies") and target.get_parent():
@@ -217,5 +207,17 @@ func _raycast_enemy(from_pos: Vector2, dir: Vector2) -> Array:
 			if p and p.is_in_group("enemies"):
 				target = p
 		if target and target.is_in_group("enemies"):
-			found = target
-	return [found, end_point]
+			var ok := true
+			if target.has_method("get"):
+				var a = target.get("active")
+				if a != null and not bool(a):
+					ok = false
+				var hp = target.get("health")
+				if hp != null and int(hp) <= 0:
+					ok = false
+			if ok and target.is_visible_in_tree():
+				return [target, hit_pos]
+		# advance past this hit and continue
+		start = hit_pos + ndir * 1.0
+		traveled = (start - (from_pos + ndir * 8.0)).length()
+	return [null, last_end]
