@@ -244,7 +244,8 @@ func take_damage(amount: int) -> void:
 # Compute final damage after rolling crits.
 # - Crit chance is capped at 100% for the roll; overflow above 1.0 increases crit damage multiplier additively.
 # - Returns an int scaled from base_damage.
-func compute_crit_damage(base_damage: int) -> int:
+func compute_crit_result(base_damage: int) -> Dictionary:
+	# Returns {"damage": int, "crit": bool}
 	var dmg: float = float(base_damage)
 	var chance: float = max(0.0, crit_chance)
 	var overflow: float = 0.0
@@ -255,7 +256,12 @@ func compute_crit_damage(base_damage: int) -> int:
 	var is_crit: bool = randf() < chance
 	if is_crit:
 		dmg *= max(1.0, effective_mult)
-	return int(round(dmg))
+	return {"damage": int(round(dmg)), "crit": is_crit}
+
+func compute_crit_damage(base_damage: int) -> int:
+	# Back-compat helper used where crit flag not needed
+	var res := compute_crit_result(base_damage)
+	return int(res.get("damage", base_damage))
 
 func apply_upgrade(upg: Dictionary) -> void:
 	var t: String = String(upg.get("type", ""))

@@ -30,14 +30,19 @@ func _physics_process(delta: float) -> void:
 func _on_body_entered(body: Node) -> void:
 	if body.is_in_group("enemies"):
 		var final_damage: int = damage
+		var was_crit := false
 		if body.has_method("take_damage"):
 			# Attribute source for on-kill stacking effects
 			if effect != null and effect is Dictionary and effect.has("source"):
 				body.set("last_damage_source", effect["source"])
 			var player_ref = get_tree().get_first_node_in_group("player")
-			if player_ref != null and player_ref.has_method("compute_crit_damage"):
-				final_damage = int(player_ref.compute_crit_damage(final_damage))
+			if player_ref != null and player_ref.has_method("compute_crit_result"):
+				var res: Dictionary = player_ref.compute_crit_result(final_damage)
+				final_damage = int(res.get("damage", final_damage))
+				was_crit = bool(res.get("crit", false))
 			body.take_damage(final_damage)
+			if body.has_method("show_damage_feedback"):
+				body.show_damage_feedback(final_damage, was_crit, global_position)
 		# Apply elemental effect if supported (independent of explosion)
 		var has_eff := (effect != null and effect is Dictionary and effect.size() > 0)
 		if has_eff and body.has_method("apply_elemental_effect"):
@@ -81,10 +86,15 @@ func _explode(pos: Vector2, dmg: int, radius: float, col: Color) -> void:
 			if effect != null and effect is Dictionary and effect.has("source"):
 				e.set("last_damage_source", effect["source"])
 			var final_dmg: int = dmg
+			var was_crit2 := false
 			var player_ref = get_tree().get_first_node_in_group("player")
-			if player_ref != null and player_ref.has_method("compute_crit_damage"):
-				final_dmg = int(player_ref.compute_crit_damage(final_dmg))
+			if player_ref != null and player_ref.has_method("compute_crit_result"):
+				var res2: Dictionary = player_ref.compute_crit_result(final_dmg)
+				final_dmg = int(res2.get("damage", final_dmg))
+				was_crit2 = bool(res2.get("crit", false))
 			e.take_damage(final_dmg)
+			if e.has_method("show_damage_feedback"):
+				e.show_damage_feedback(final_dmg, was_crit2, e.global_position)
 	# Visual polish: double shockwave + radial streaks
 	var ring := Line2D.new()
 	ring.width = 3.0

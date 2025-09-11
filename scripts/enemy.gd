@@ -207,14 +207,38 @@ func _apply_shock_arcs(base_damage: int, count: int, radius: float, factor: floa
 		var pos: Vector2 = e.global_position
 		if global_position.distance_to(pos) <= radius:
 			if e.has_method("take_damage"):
-				var arc_dmg: int = int(round(float(base_damage) * factor))
+				var arc_base: int = int(round(float(base_damage) * factor))
+				var arc_dmg: int = arc_base
+				var is_crit := false
 				# Allow arcs to crit using the player's crit stats
 				var player = get_tree().get_first_node_in_group("player")
-				if player != null and player.has_method("compute_crit_damage"):
-					arc_dmg = int(player.compute_crit_damage(arc_dmg))
+				if player != null and player.has_method("compute_crit_result"):
+					var res: Dictionary = player.compute_crit_result(arc_base)
+					arc_dmg = int(res.get("damage", arc_base))
+					is_crit = bool(res.get("crit", false))
 				e.take_damage(arc_dmg)
+				if e.has_method("show_damage_feedback"):
+					e.show_damage_feedback(arc_dmg, is_crit, e.global_position)
 				hits += 1
 				_spawn_shock_arc(global_position, pos)
+
+# Visual hit feedback: floating numbers + quick ring flash
+func show_damage_feedback(amount: int, is_crit: bool, at: Vector2) -> void:
+	# Floating number
+	var label := Label.new()
+	label.text = str(amount)
+	label.add_theme_font_size_override("font_size", 24 if is_crit else 18)
+	label.add_theme_color_override("font_color", Color(1.0, 0.9, 0.2) if is_crit else Color(1,1,1))
+	var parent := get_tree().current_scene
+	if parent == null:
+		return
+	parent.add_child(label)
+	label.global_position = at + Vector2(randf_range(-6,6), -8)
+	label.z_index = 2000
+	var tw := label.create_tween()
+	tw.tween_property(label, "position:y", label.position.y - 16.0, 0.25).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tw.parallel().tween_property(label, "modulate:a", 0.0, 0.3)
+	tw.tween_callback(label.queue_free)
 
 func _ensure_ignite_fx() -> void:
 	if ignite_fx != null and is_instance_valid(ignite_fx):

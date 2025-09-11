@@ -51,10 +51,15 @@ func activate(pos: Vector2, dir: Vector2, dmg: int, col: Color, effect: Dictiona
 			if _effect is Dictionary and _effect.has("source"):
 				target.set("last_damage_source", _effect["source"])
 			var final_damage: int = _damage
+			var was_crit := false
 			var player = get_tree().get_first_node_in_group("player")
-			if player != null and player.has_method("compute_crit_damage"):
-				final_damage = int(player.compute_crit_damage(final_damage))
+			if player != null and player.has_method("compute_crit_result"):
+				var res: Dictionary = player.compute_crit_result(final_damage)
+				final_damage = int(res.get("damage", final_damage))
+				was_crit = bool(res.get("crit", false))
 			target.take_damage(final_damage)
+			if target.has_method("show_damage_feedback"):
+				target.show_damage_feedback(final_damage, was_crit, end_point)
 			if _effect is Dictionary and _effect.size() > 0 and target.has_method("apply_elemental_effect"):
 				target.apply_elemental_effect(_effect, final_damage, end_point)
 	_set_line(Vector2.ZERO, (end_point - global_position))
