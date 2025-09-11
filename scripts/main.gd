@@ -282,8 +282,9 @@ func _spawn_enemies() -> void:
 
 	var enemies := _active_enemies_count()
 	var dp: Dictionary = _difficulty_params()
-	var soft_cap := int(round(float(SOFT_CAP_ENEMIES) * float(dp.get("cap_mult", 1.0))))
-	var hard_cap := int(round(float(MAX_ENEMIES) * float(dp.get("cap_mult", 1.0))))
+	var cap_scale := _cap_scale_for_wave(wave)
+	var soft_cap := int(round(float(SOFT_CAP_ENEMIES) * float(dp.get("cap_mult", 1.0)) * cap_scale))
+	var hard_cap := int(round(float(MAX_ENEMIES) * float(dp.get("cap_mult", 1.0)) * cap_scale))
 	var count := int(round(float(base_count) * float(dp.get("count_mult", 1.0))))
 
 	# Tier now increases every 2 waves for higher HP ramp, plus difficulty bonus
@@ -315,8 +316,9 @@ func _spawn_enemies_grouped() -> void:
 	var base_count := 3 + int(round(float(wave) * 2.0))
 	var enemies := _active_enemies_count()
 	var dp: Dictionary = _difficulty_params()
-	var soft_cap := int(round(float(SOFT_CAP_ENEMIES) * float(dp.get("cap_mult", 1.0))))
-	var hard_cap := int(round(float(MAX_ENEMIES) * float(dp.get("cap_mult", 1.0))))
+	var cap_scale := _cap_scale_for_wave(wave)
+	var soft_cap := int(round(float(SOFT_CAP_ENEMIES) * float(dp.get("cap_mult", 1.0)) * cap_scale))
+	var hard_cap := int(round(float(MAX_ENEMIES) * float(dp.get("cap_mult", 1.0)) * cap_scale))
 	var count := int(round(float(base_count) * float(dp.get("count_mult", 1.0))))
 
 	# Tier increases every 2 waves, plus difficulty bonus
@@ -333,9 +335,9 @@ func _spawn_enemies_grouped() -> void:
 		# Back off next group
 		spawn_timer.wait_time = min(3.5, spawn_timer.wait_time * 1.2)
 		return
-	# Choose a group size and positions (slightly larger groups later)
+	# Choose a group size and positions (larger groups as waves rise)
 	var gmin := 2
-	var gmax := int(dp.get("group_max", 5))
+	var gmax := int(dp.get("group_max", 5)) + int(clamp(floor(float(wave) / 3.0), 0, 6))
 	var gsize: int = int(clamp(randi() % (gmax - gmin + 1) + gmin, 1, max(1, count)))
 	var positions: Array = []
 	for i in range(gsize):
@@ -371,11 +373,17 @@ func _spawn_enemies_grouped() -> void:
 func _adjust_spawning() -> void:
 	var enemies := _active_enemies_count()
 	var dp: Dictionary = _difficulty_params()
-	var soft_cap := int(round(float(SOFT_CAP_ENEMIES) * float(dp.get("cap_mult", 1.0))))
+	var cap_scale := _cap_scale_for_wave(wave)
+	var soft_cap := int(round(float(SOFT_CAP_ENEMIES) * float(dp.get("cap_mult", 1.0)) * cap_scale))
 	if enemies > soft_cap:
 		spawn_timer.wait_time = min(3.0, spawn_timer.wait_time * 1.25)
 	else:
 		spawn_timer.wait_time = max(0.25, spawn_timer.wait_time * 0.95)
+
+# Scale enemy caps with wave to allow much larger late-wave counts.
+func _cap_scale_for_wave(w: int) -> float:
+	# Grows ~12% per wave, capped at 4x by default.
+	return min(4.0, 1.0 + 0.12 * float(max(0, w - 1)))
 
 
 func _random_spawn_position() -> Vector2:
@@ -464,7 +472,10 @@ func _clear_hud_highlights() -> void:
 	_update_weapons_hud()
 
 func _xp_for_next_level(l: int) -> int:
-	return 5 + l * 5
+	# Non-linear XP curve: modest early, steeper later
+	var lf := float(max(1, l))
+	var need := 6.0 + 4.0 * lf + 0.8 * lf * lf
+	return max(8, int(round(need)))
 
 func _gain_xp(pts: int) -> void:
 	xp += pts
