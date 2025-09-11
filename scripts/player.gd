@@ -521,6 +521,14 @@ func _apply_stack_effect(stype: String, conf: Dictionary) -> void:
 			var inc2: float = float(conf.get("per_stack", 0.02))
 			apply_attack_speed_multiplier(1.0 + inc2)
 			_show_stack_cue("+%d%% Attack Speed" % int(round(inc2*100.0)), Color(0.6,1.0,0.6))
+		"projectile_speed":
+			var inc_ps: float = float(conf.get("per_stack", 0.05))
+			projectile_speed_mult *= (1.0 + inc_ps)
+			_show_stack_cue("+%d%% Proj Speed" % int(round(inc_ps*100.0)), Color(0.6,0.9,1.0))
+		"move_speed":
+			var inc_ms: float = float(conf.get("per_stack", 0.02))
+			apply_move_speed_multiplier(1.0 + inc_ms)
+			_show_stack_cue("+%d%% Move Speed" % int(round(inc_ms*100.0)), Color(0.8,0.9,1.0))
 		"max_hp":
 			var add: int = int(conf.get("per_stack", 2))
 			max_health += add

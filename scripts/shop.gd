@@ -92,6 +92,15 @@ const WEAPONS: Array[Dictionary] = [
 		 "desc":"Kills spawn turrets after a few kills.",
 		 "fire_interval":0.45, "damage":9, "speed":520, "projectiles":1, "color": Color(0.7,1.0,0.3),
 		 "stack": {"type":"turret_spawn","per_stack":1,"base_kills":4}},
+		# Scaling weapons for projectile speed and move speed
+		{"kind":"weapon","id":"accelerator","name":"Accelerator","cost":18,"rarity":"Rare",
+		 "desc":"Kills grant +5% Projectile Speed per stack.",
+		 "fire_interval":0.40, "damage":9, "speed":560, "projectiles":1, "color": Color(0.6,0.9,1.0),
+		 "stack": {"type":"projectile_speed","per_stack":0.05,"base_kills":6}},
+		{"kind":"weapon","id":"sprinter","name":"Sprinter","cost":16,"rarity":"Uncommon",
+		 "desc":"Kills grant +2% Move Speed per stack.",
+		 "fire_interval":0.36, "damage":8, "speed":520, "projectiles":1, "color": Color(0.8,0.9,1.0),
+		 "stack": {"type":"move_speed","per_stack":0.02,"base_kills":6}},
 		# New: Crit-stacking weapon
 		{"kind":"weapon","id":"assassin","name":"Assassin","cost":18,"rarity":"Rare",
 		 "desc":"Kills grant +2% Crit Chance.",
