@@ -2,6 +2,57 @@
 
 Tiny Godot 4 arena-survivor prototype. Move, auto-aim at the nearest enemy, and survive timed waves that ramp up. Between waves, pick upgrades and shop for items/weapons.
 
+## What’s New (Gameplay + UX)
+
+- Crit System
+  - Weapons can now crit. Crit chance hard-caps at 100%; any overflow converts into extra crit damage. The Stats panel shows Crit Chance and Crit Damage, including overflow.
+  - New weapon: Assassin — on-kill stacks grant +2% Crit Chance per stack (overflow boosts crit damage).
+
+- Defense + Survivability
+  - New Defense stat reduces damage taken (shown as “Damage Taken” in Core). Several items grant Defense.
+  - New weapon: Guardian — on-kill stacks grant +2% Defense per stack.
+
+- Speed Scaling
+  - Move Speed has a 3× cap; any overflow converts into Currency Gain. Stats panel groups all overflow conversions under “Overflows”.
+  - New weapon: Sprinter — on-kill stacks grant +2% Move Speed per stack (benefits from overflow conversion to currency).
+  - Projectile Speed contributes to beam conversion. Stats panel now shows “Proj Speed -> Beam Dmg” when the fastest shot exceeds the beam threshold.
+  - New weapon: Accelerator — on-kill stacks grant +5% Projectile Speed per stack.
+
+- Beams
+  - Extremely fast projectiles become beams whose damage scales by speed overflow.
+  - Beams are now true channel beams: once beaming, they hold a continuous line, follow the shooter, and persist while the shooter is firing. They retarget robustly and hide when no valid targets exist to avoid “shooting at emptiness”.
+
+- Visual Feedback
+  - Floating damage numbers added broadly, including for beam ticks and burn (Ignite) DoT; bosses now display floating damage numbers too.
+
+## What’s New (Balance + Progression)
+
+- Wave Duration: grows with wave (+4s per wave) and caps at 90s.
+- Enemy Density: soft/hard caps scale by wave (up to ~4×) for larger late‑wave swarms.
+- XP Curve: non‑linear (quadratic) requirement for level‑ups to slow late‑game snowballing.
+- Shop Prices: global 10% per‑wave price scaler to curb runaway power (applies after tier multipliers).
+
+## Stats Panel Improvements
+
+- Cap coloring for Attack Speed and Move Speed (orange at cap).
+- New Overflows section groups all conversions:
+  - Attack Speed → Damage
+  - Projectiles → Damage
+  - Move Speed → Currency
+  - Proj Speed → Beam Dmg (estimated from fastest equipped weapon vs. beam threshold)
+
+## Debugging & Diagnostics
+
+- Anti‑teleport Guard instrumentation (Player)
+  - When the position guard triggers, the console prints a detailed snapshot: step distance, limits, delta, velocity, previous/attempted positions, pause/UI/flow flags, enemy counts (total and active+visible), and a brief beams summary (total/channeling/visible + a few beam states).
+  - Sample prefix: `[Guard] Cancelled abnormal move: ...`
+
+## New Content (Summary)
+
+- Weapons: Assassin (crit), Guardian (defense), Accelerator (projectile speed), Sprinter (move speed). All four stack on kills (fewer kills per stack at higher tiers).
+- Items: Kevlar Vest, Riot Armor, Plated Armor, Nanoshield (Defense line), plus existing speed/elemental/turret items.
+
+
 ## Requirements
 
 - Godot 4.4 (or any 4.x that supports the 4.4 feature flag in `project.godot`).
