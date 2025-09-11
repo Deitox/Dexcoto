@@ -1,0 +1,50 @@
+Dexcoto - Modding License
+Version 1.0 - [YYYY-MM-DD]
+
+SUMMARY (non-binding): You may create and share Mods for Dexcoto that require a legitimate copy of the Game. You may not redistribute our assets or code, make standalone games, or use our trademarks. Commercial Mods require our written permission. Some platforms limit executable scripts; on those platforms only data-driven Mods are allowed.
+
+1) DEFINITIONS
+"Game" means Dexcoto, owned/licensed by Deitox.
+"Mod" means a user-created addition, modification, or plugin intended to work only with the Game.
+"SDK" means any tools, examples, docs, or schemas we publish to support modding.
+"Assets" means artwork, audio, fonts, text, cinematics, and other content shipped with the Game.
+
+2) LICENSE GRANT (WHAT YOU MAY DO)
+Subject to this License and the EULA, we grant you a limited, revocable, non-exclusive, non-transferable, worldwide license to:
+(a) create Mods using the SDK and publicly documented Game interfaces;
+(b) distribute Mods (free of charge) via platforms that lawfully distribute UGC (e.g., Steam Workshop), provided the Mods:
+   (i) require a legally obtained copy of the Game to function;
+   (ii) do not include or redistribute any Game Assets or proprietary Game code; and
+   (iii) comply with this License, the EULA, and applicable platform rules.
+
+3) RESTRICTIONS (WHAT YOU MAY NOT DO)
+You must not:
+(a) distribute any Mod that functions as a standalone game, or that is reasonably usable without the Game;
+(b) include, copy, extract, or redistribute Game Assets or proprietary Game code in Mods;
+(c) recreate or bundle substantial portions of Game logic/content in a way that substitutes for purchasing the Game;
+(d) use our trademarks, logos, or trade dress, except to truthfully state "for Dexcoto" in plain text;
+(e) circumvent security/DRM, enable cheating, or degrade performance/experience for others;
+(f) include malware, unlawful content, or infringing materials in Mods.
+
+4) COMMERCIAL MODS
+You may not sell Mods, solicit payment, or place Mods behind a paywall without our prior written permission. If you wish to monetize a Mod (e.g., a premium DLC-style pack), contact us to discuss approval and terms.
+
+5) PLATFORM LIMITATIONS
+Some platforms (e.g., iOS and consoles) restrict executable scripting or dynamic code loading. On such platforms, Mods are limited to data-driven content (e.g., levels, configs, skins). We may disable or limit Mod features to comply with platform policies.
+
+6) RIGHTS IN YOUR MOD
+As between you and us, you own your Mod (excluding the Game, Assets, SDK, and any third-party content). By uploading or distributing a Mod, you grant us a worldwide, non-exclusive, royalty-free license to host, cache, distribute, publicly display, and adapt the Mod as reasonably necessary to operate game services (e.g., updates, compatibility), to comply with platform rules, and to promote the Game and the Mod.
+
+7) THIRD-PARTY CONTENT IN MODS
+If you include third-party content, you are responsible for having the rights to use and distribute it within your Mod. Your Mod must include any required notices/attributions, and must not impose terms that conflict with this License or the EULA.
+
+8) MOD DISTRIBUTION & PACKAGING
+Package Mods separately from the Game (e.g., in a user mods folder or platform-approved UGC channel). Do not distribute Mods as modified copies of the Game build. Do not include executables or installers that overwrite Game files.
+
+9) TAKEDOWN; TERMINATION
+We may request removal or disable access to any Mod that violates this License, the EULA, law, or platform rules, or that we reasonably deem harmful. We may revoke this License at any time for specific Mods or categories of content. If revoked, you must cease distribution of the affected Mod(s).
+
+10) DISCLAIMER; LIMITATION
+THE SDK AND ANY MOD-RELATED TOOLS ARE PROVIDED "AS IS" WITHOUT WARRANTY. TO THE MAXIMUM EXTENT PERMITTED BY LAW, WE ARE NOT LIABLE FOR INDIRECT OR CONSEQUENTIAL DAMAGES ARISING FROM MODS.
+
+Contact: [your email]

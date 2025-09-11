@@ -1,0 +1,75 @@
+Dexcoto - Commercial Mod Addendum (Template)
+Version 1.0 - [YYYY-MM-DD]
+
+This Commercial Mod Addendum (the "Addendum") supplements the Dexcoto Modding License (the "Modding License") and the Dexcoto EULA. Capitalized terms have the same meaning as in those documents unless defined here.
+
+1) PURPOSE
+Creator wishes to distribute a commercial user-generated modification ("Commercial Mod") for Dexcoto. This Addendum authorizes limited commercial distribution under the terms below.
+
+2) IDENTIFICATION
+Mod Title: [Title]
+Mod ID (slug): [dexcoto-[your-mod]]
+Creator Name & Address: [Name, Address]
+Contact: [your email]
+Store(s)/Channel(s): [Steam Workshop Paid Mods / Company Storefront / Other]
+Territory: [Worldwide] unless limited here: [ ]
+Languages: [ ]
+
+3) SCOPE OF RIGHTS
+(a) License. Subject to this Addendum, we grant you a non-exclusive, revocable right to sell and distribute the Commercial Mod solely for use with a legally obtained copy of Dexcoto. The Mod must not function as a standalone game or substitute for the Game.
+(b) Company Rights. You grant us a worldwide, non-exclusive, royalty-free license to host, cache, reproduce, distribute, and display the Mod as necessary to operate game services, fulfill platform requirements, and promote the Game and the Mod.
+
+4) REVENUE SHARE & PAYMENTS
+(a) MSRP / Pricing: [Currency + price or "Creator sets within [minâ€“max]"]
+(b) Revenue Split (net of platform fees, taxes, chargebacks): Company [__]% / Creator [__]%
+(c) Reporting & Payment: [Monthly / Quarterly] within [30] days after period-end, via [PayPal / wire / Stripe Connect]. Minimum payout threshold: [__].
+(d) Taxes: Each party is responsible for its own taxes. Creator will provide required tax forms (e.g., W-9/W-8).
+
+5) CONTENT & IP
+(a) Creator warrants the Mod (including any third-party content inside it) is original or properly licensed; no infringing content.
+(b) The Mod may not include any Company assets, code, trade dress, or confidential materials.
+(c) Trademarks. You may state "for Dexcoto" in plain text. You may not use our trademarks, logos, or confusingly similar names. The Mod title must be sufficiently distinct.
+
+6) TECHNICAL & POLICY COMPLIANCE
+(a) Platform Limits. On platforms that prohibit executable scripting (e.g., iOS, certain consoles), the Mod must be data-driven only (levels/skins/configs). We may disable or gate features per platform policy.
+(b) Security & Stability. The Mod must pass Company validation (schema checks, load tests). No cheats, malware, telemetry beyond declared needs, crypto, or harmful scripts.
+(c) Updates. Creator will maintain compatibility within a reasonable time after Company releases breaking updates. If the Mod becomes unmaintained or broken, Company may delist or hide it.
+
+7) QA, RATING, AND CONTENT GUIDELINES
+(a) QA. Company may require a pre-release build for review and may request reasonable fixes prior to approval.
+(b) Ratings/content. Mod must comply with ESRB/PEGI-equivalent guidelines and applicable law. No hate speech/illegal content.
+(c) Support. Creator is primary support contact for Mod-specific issues. Company may forward tickets; Creator will provide a support email/Discord.
+
+8) REFUNDS & CHARGEBACKS
+Platform refund policies apply. Refunded transactions are excluded from revenue share or may be clawed back in the next report.
+
+9) TERM; TERMINATION
+(a) Term: Effective on signature by both parties until terminated.
+(b) Termination by Either Party: [30] days' written notice for convenience.
+(c) Immediate Termination: For breach, fraud, infringement, security risk, takedown requests, or platform policy conflicts.
+(d) Effect: Upon termination, Mod may be delisted. Company may continue to host copies necessary for (i) existing buyers' access per platform policies and (ii) archival/compliance.
+
+10) CONFIDENTIALITY
+Non-public business and technical information shared under this Addendum is confidential.
+
+11) AUDIT
+Company may, on [30] days' notice, audit sales records related to the Mod no more than [1â€“2] times per year, at Company's expense, to verify reports.
+
+12) WARRANTIES & INDEMNITY
+(a) "AS IS". Except for express statements herein, both parties disclaim warranties to the fullest extent permitted by law.
+(b) Indemnity. Creator will defend and indemnify Company against third-party claims arising from the Mod (IP infringement, unlawful content, EULA/privacy violations), except to the extent caused by Company materials.
+
+13) MISCELLANEOUS
+(a) Independent Contractors; no joint venture.
+(b) Assignment requires consent (not to be unreasonably withheld), except to a successor in interest.
+(c) Governing Law & Venue: [State/Country]; courts in [Venue].
+(d) Entire Agreement; Order of Precedence: This Addendum > Modding License (only where conflicting) > EULA.
+(e) Counterparts; e-signatures permitted.
+
+Agreed and accepted:
+
+Company: Deitox                         Creator: [Creator Legal Name]
+By: ______________________________      By: ______________________________
+Name/Title: _______________________     Name/Title: _______________________
+Date: ______________________________    Date: ______________________________
+

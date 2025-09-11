@@ -1,0 +1,210 @@
+extends Control
+
+@onready var text: RichTextLabel = $RichText
+
+const ShopLib = preload("res://scripts/shop.gd")
+
+func _fmt_line(item_id: String, raw: String, id_to_rarity: Dictionary) -> String:
+	var rar := String(id_to_rarity.get(item_id, "Common"))
+	var hex: String = ShopLib.rarity_color_hex(rar)
+	# rarity_color_hex returns without '#'
+	return "[color=#%s]%s[/color]" % [hex, raw]
+
+func _ready() -> void:
+	process_mode = Node.PROCESS_MODE_WHEN_PAUSED
+	if has_signal("visibility_changed"):
+		visibility_changed.connect(_on_visibility_changed)
+	_refresh()
+
+func _on_visibility_changed() -> void:
+	if visible:
+		_refresh()
+
+func refresh() -> void:
+	_refresh()
+
+func name_of(id: String, fallback: String, id_to_name: Dictionary) -> String:
+	return String(id_to_name.get(id, fallback))
+
+func _refresh() -> void:
+	var main := get_tree().current_scene
+	if main == null:
+		return
+	var player := get_tree().get_first_node_in_group("player")
+	if player == null:
+		return
+	var counts: Dictionary = {}
+	var cdict = player.get("item_counts") if player.has_method("get") else null
+	if cdict != null:
+		counts = cdict
+
+	var id_to_name: Dictionary = {}
+	var id_to_rarity: Dictionary = {}
+	for it in ShopLib.items():
+		var iid := String(it["id"])
+		id_to_name[iid] = String(it["name"])
+		id_to_rarity[iid] = String(it.get("rarity", "Common"))
+
+	var entries: Array[Dictionary] = []
+
+	# Economy
+	var n := int(counts.get("money_charm", 0))
+	if n > 0:
+		var mul := pow(1.2, float(n))
+		_add_entry(entries, id_to_name, id_to_rarity, "money_charm", "%s x%d - +%d%% currency (x%.2f)" % [name_of("money_charm","Money Charm", id_to_name), n, int(round((mul-1.0)*100.0)), mul])
+
+	# Core combat items
+	n = int(counts.get("overcharger", 0))
+	if n > 0:
+		var mul_o := pow(1.15, float(n))
+		_add_entry(entries, id_to_name, id_to_rarity, "overcharger", "%s x%d - +%d%% attack speed (x%.2f)" % [name_of("overcharger","Overcharger", id_to_name), n, int(round((mul_o-1.0)*100.0)), mul_o])
+	n = int(counts.get("adrenaline", 0))
+	if n > 0:
+		_add_entry(entries, id_to_name, id_to_rarity, "adrenaline", "%s x%d - +%.1f HP/s regen" % [name_of("adrenaline","Adrenaline", id_to_name), n, 0.5*float(n)])
+	n = int(counts.get("lifesteal_charm", 0))
+	if n > 0:
+		_add_entry(entries, id_to_name, id_to_rarity, "lifesteal_charm", "%s x%d - +%d HP per kill" % [name_of("lifesteal_charm","Lifesteal Charm", id_to_name), n, n])
+
+	# Movement/projectile
+	n = int(counts.get("boots", 0))
+	if n > 0:
+		var mul_b := pow(1.10, float(n))
+		_add_entry(entries, id_to_name, id_to_rarity, "boots", "%s x%d - +%d%% move speed (x%.2f)" % [name_of("boots","Boots", id_to_name), n, int(round((mul_b-1.0)*100.0)), mul_b])
+	n = int(counts.get("caffeine", 0))
+	if n > 0:
+		var mul_c := pow(1.10, float(n))
+		_add_entry(entries, id_to_name, id_to_rarity, "caffeine", "%s x%d - +%d%% attack speed (x%.2f)" % [name_of("caffeine","Caffeine", id_to_name), n, int(round((mul_c-1.0)*100.0)), mul_c])
+
+	# Turret projectile speed items
+	n = int(counts.get("turret_servos", 0))
+	if n > 0:
+		var mul_ts := pow(1.20, float(n))
+		_add_entry(entries, id_to_name, id_to_rarity, "turret_servos", "%s x%d - +%d%% Turret Projectile Speed (x%.2f)" % [name_of("turret_servos","Servomotors", id_to_name), n, int(round((mul_ts-1.0)*100.0)), mul_ts])
+	n = int(counts.get("gyro_stabilizer", 0))
+	if n > 0:
+		var mul_gs := pow(1.35, float(n))
+		_add_entry(entries, id_to_name, id_to_rarity, "gyro_stabilizer", "%s x%d - +%d%% Turret Projectile Speed (x%.2f)" % [name_of("gyro_stabilizer","Gyro Stabilizer", id_to_name), n, int(round((mul_gs-1.0)*100.0)), mul_gs])
+	n = int(counts.get("aerodynamics", 0))
+	if n > 0:
+		var mul_a := pow(1.20, float(n))
+		_add_entry(entries, id_to_name, id_to_rarity, "aerodynamics", "%s x%d - +%d%% projectile speed (x%.2f)" % [name_of("aerodynamics","Aerodynamics", id_to_name), n, int(round((mul_a-1.0)*100.0)), mul_a])
+
+	# Survivability
+	n = int(counts.get("protein_bar", 0))
+	if n > 0:
+		_add_entry(entries, id_to_name, id_to_rarity, "protein_bar", "%s x%d - +%d Max HP" % [name_of("protein_bar","Protein Bar", id_to_name), n, 15*n])
+	n = int(counts.get("medkit", 0))
+	if n > 0:
+		_add_entry(entries, id_to_name, id_to_rarity, "medkit", "%s x%d - +%.1f HP/s regen" % [name_of("medkit","Medkit", id_to_name), n, 1.0*float(n)])
+
+	# Economy and damage
+	n = int(counts.get("greed_token", 0))
+	if n > 0:
+		var mul_g := pow(1.15, float(n))
+		_add_entry(entries, id_to_name, id_to_rarity, "greed_token", "%s x%d - +%d%% currency (x%.2f)" % [name_of("greed_token","Greed Token", id_to_name), n, int(round((mul_g-1.0)*100.0)), mul_g])
+	n = int(counts.get("vampiric_orb", 0))
+	if n > 0:
+		_add_entry(entries, id_to_name, id_to_rarity, "vampiric_orb", "%s x%d - +%d HP per kill" % [name_of("vampiric_orb","Vampiric Orb", id_to_name), n, n])
+	n = int(counts.get("power_core", 0))
+	if n > 0:
+		var mul_p := pow(1.10, float(n))
+		_add_entry(entries, id_to_name, id_to_rarity, "power_core", "%s x%d - +%d%% damage (x%.2f)" % [name_of("power_core","Power Core", id_to_name), n, int(round((mul_p-1.0)*100.0)), mul_p])
+
+	# Spread control
+	n = int(counts.get("stabilizer", 0))
+	if n > 0:
+		_add_entry(entries, id_to_name, id_to_rarity, "stabilizer", "%s x%d - -%d° spread" % [name_of("stabilizer","Stabilizer", id_to_name), n, 2*n])
+
+	# Elemental Power items
+	for id in ["elemental_amp","elemental_catalyst","elemental_core","arcanum"]:
+		n = int(counts.get(id, 0))
+		if n <= 0:
+			continue
+		var f := 1.0
+		match id:
+			"elemental_amp": f = 1.10
+			"elemental_catalyst": f = 1.20
+			"elemental_core": f = 1.30
+			"arcanum": f = 1.40
+		var mul_e := pow(f, float(n))
+		_add_entry(entries, id_to_name, id_to_rarity, id, "%s x%d - +%d%% Elemental Power (x%.2f)" % [name_of(id, id.capitalize(), id_to_name), n, int(round((mul_e-1.0)*100.0)), mul_e])
+
+	# Explosive Power items
+	for id in ["blast_caps","demolition_kit","payload_upgrade","warhead"]:
+		n = int(counts.get(id, 0))
+		if n <= 0:
+			continue
+		var fx := 1.0
+		match id:
+			"blast_caps": fx = 1.10
+			"demolition_kit": fx = 1.15
+			"payload_upgrade": fx = 1.20
+			"warhead": fx = 1.30
+		var mul_x := pow(fx, float(n))
+		_add_entry(entries, id_to_name, id_to_rarity, id, "%s x%d - +%d%% Explosive Power (x%.2f)" % [name_of(id, id.capitalize(), id_to_name), n, int(round((mul_x-1.0)*100.0)), mul_x])
+
+	# Cross-synergy items
+	n = int(counts.get("volatile_rounds", 0))
+	if n > 0:
+		var ch1: float = min(0.5, 0.08 * float(n))
+		_add_entry(entries, id_to_name, id_to_rarity, "volatile_rounds", "%s x%d - %d%% chance for non-explosive hits to explode" % [name_of("volatile_rounds","Volatile Rounds", id_to_name), n, int(round(ch1*100.0))])
+	n = int(counts.get("elemental_fuse", 0))
+	if n > 0:
+		var ch2: float = min(0.6, 0.10 * float(n))
+		_add_entry(entries, id_to_name, id_to_rarity, "elemental_fuse", "%s x%d - %d%% chance for non-elemental hits to inflict a random element" % [name_of("elemental_fuse","Elemental Fuse", id_to_name), n, int(round(ch2*100.0))])
+	n = int(counts.get("payload_catalyst", 0))
+	if n > 0:
+		var ch3: float = min(0.5, 0.10 * float(n))
+		_add_entry(entries, id_to_name, id_to_rarity, "payload_catalyst", "%s x%d - %d%% chance for explosions to apply a random element in the blast" % [name_of("payload_catalyst","Payload Catalyst", id_to_name), n, int(round(ch3*100.0))])
+	n = int(counts.get("superconductor", 0))
+	if n > 0:
+		_add_entry(entries, id_to_name, id_to_rarity, "superconductor", "%s x%d - Shock arcs +%d, radius +%d" % [name_of("superconductor","Superconductor", id_to_name), n, n, 12*n])
+
+	# Turret Power items
+	n = int(counts.get("toolkit", 0))
+	if n > 0:
+		var mul_t1 := pow(1.10, float(n))
+		_add_entry(entries, id_to_name, id_to_rarity, "toolkit", "%s x%d - +%d%% Turret Power (x%.2f)" % [name_of("toolkit","Toolkit", id_to_name), n, int(round((mul_t1-1.0)*100.0)), mul_t1])
+	n = int(counts.get("engineer_manual", 0))
+	if n > 0:
+		var mul_t2 := pow(1.20, float(n))
+		_add_entry(entries, id_to_name, id_to_rarity, "engineer_manual", "%s x%d - +%d%% Turret Power (x%.2f)" % [name_of("engineer_manual","Engineer Manual", id_to_name), n, int(round((mul_t2-1.0)*100.0)), mul_t2])
+
+	# Turret queued display
+	n = int(counts.get("turret", 0))
+	if main and main.has_method("get") and bool(main.get("in_intermission")):
+		var pending := int(main.get("pending_turrets")) if main.has_method("get") else 0
+		if n > 0 or pending > 0:
+			var left := name_of("turret","Turret", id_to_name)
+			if n > 0:
+				left += " x%d" % n
+			entries.append({"id":"turret","name":left,"rarity":String(id_to_rarity.get("turret","Uncommon")),"line":"%s - Queued: %d next wave" % [left, pending]})
+
+	# Sort entries by rarity weight (desc), then alphabetically by name
+	var cmp = func(a, b):
+		var weights := {"Common":1, "Uncommon":2, "Rare":3, "Epic":4, "Legendary":5}
+		var wa := int(weights.get(String(a["rarity"]), 0))
+		var wb := int(weights.get(String(b["rarity"]), 0))
+		if wa != wb:
+			return wa > wb
+		return String(a["name"]).to_lower() < String(b["name"]).to_lower()
+	entries.sort_custom(cmp)
+
+	var lines: Array[String] = []
+	for e in entries:
+		lines.append(String(e["line"]))
+
+	if lines.size() == 0:
+		text.text = "No items yet. Buy items in the shop to stack effects."
+	else:
+		text.text = "[b]Items & Effects[/b]\n" + "\n".join(lines)
+
+func _add_entry(entries: Array, id_to_name: Dictionary, id_to_rarity: Dictionary, item_id: String, raw: String) -> void:
+	var rar := String(id_to_rarity.get(item_id, "Common"))
+	var nm := name_of(item_id, item_id.capitalize(), id_to_name)
+	entries.append({
+		"id": item_id,
+		"name": nm,
+		"rarity": rar,
+		"line": _fmt_line(item_id, raw, id_to_rarity),
+	})
