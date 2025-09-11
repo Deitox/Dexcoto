@@ -148,6 +148,8 @@ func _ready() -> void:
 	else:
 		turret_pool = get_tree().get_first_node_in_group("turret_pool")
 
+	# Set initial wave duration based on wave number
+	wave_time = _compute_wave_duration(wave)
 	wave_timer.wait_time = wave_time
 	wave_timer.timeout.connect(_on_wave_timer_timeout)
 
@@ -906,6 +908,9 @@ func _start_next_wave() -> void:
 	wave += 1
 	elapsed = 0.0
 	in_intermission = false
+	# Update wave duration with growth per wave, capped at 90s
+	wave_time = _compute_wave_duration(wave)
+	wave_timer.wait_time = wave_time
 	# Pre-wave: place queued turrets and merge before timers start
 	_spawn_pending_turrets()
 	_balance_turrets()
@@ -920,6 +925,13 @@ func _start_next_wave() -> void:
 	# Spawn a boss every 5th wave (5,10,15,...) once per wave
 	if wave % 5 == 0:
 		_spawn_boss_for_wave()
+
+# Compute wave duration in seconds, increasing with wave and capped.
+func _compute_wave_duration(w: int) -> float:
+	var base: float = 20.0
+	var growth_per_wave: float = 5.0
+	var grown := base + growth_per_wave * float(max(0, w - 1))
+	return min(90.0, grown)
 
 func _spawn_boss_for_wave() -> void:
 	if BOSS_SCENE == null:
