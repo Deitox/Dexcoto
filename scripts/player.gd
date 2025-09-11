@@ -105,10 +105,12 @@ func _physics_process(delta: float) -> void:
 	var expected_step: float = move_speed * delta * 2.5 # generous factor for diagonals/buffs
 	var hard_cap: float = 320.0 # absolute threshold in px/frame
 	if step_dist > max(expected_step, hard_cap):
+		var attempted_pos: Vector2 = global_position
+		var prev_pos: Vector2 = _last_pos
 		global_position = _last_pos
 		velocity = Vector2.ZERO
 		if _teleport_log_cooldown <= 0.0:
-			print("[Guard] Cancelled abnormal move: ", step_dist)
+			_log_guard_event(step_dist, expected_step, hard_cap, delta, attempted_pos, prev_pos)
 			_teleport_log_cooldown = 1.0
 	_teleport_log_cooldown = max(0.0, _teleport_log_cooldown - delta)
 	_last_pos = global_position
@@ -603,3 +605,70 @@ func _ensure_bullet_pool() -> void:
 		var p = get_tree().get_first_node_in_group("bullet_pool")
 		if p != null:
 			bullet_pool = p
+
+# Detailed instrumentation for the anti-teleport guard to diagnose root cause.
+func _log_guard_event(step_dist: float, expected_step: float, hard_cap: float, delta: float, attempted_pos: Vector2, prev_pos: Vector2) -> void:
+	var paused := get_tree().paused
+	var cs := get_tree().current_scene
+	var intermission := false
+	var awaiting_character := false
+	var ui_modal := false
+	if cs != null:
+		# Safely probe scene state flags if present
+		var v1 = null
+		var v2 = null
+		if cs.has_method("get"):
+			v1 = cs.get("in_intermission")
+			v2 = cs.get("awaiting_character")
+		if v1 != null:
+			intermission = bool(v1)
+		if v2 != null:
+			awaiting_character = bool(v2)
+		if cs.has_method("_ui_modal_active"):
+			ui_modal = bool(cs.call("_ui_modal_active"))
+
+	# Enemy counts (total and active+visible)
+	var enemies_all: Array = get_tree().get_nodes_in_group("enemies")
+	var enemies_total: int = enemies_all.size()
+	var enemies_active_visible: int = 0
+	for e in enemies_all:
+		if not is_instance_valid(e):
+			continue
+		if not e.is_visible_in_tree():
+			continue
+		var ok := true
+		if e.has_method("get"):
+			var a = e.get("active")
+			if a != null and not bool(a):
+				ok = false
+			var hp = e.get("health")
+			if hp != null and int(hp) <= 0:
+				ok = false
+		if ok:
+			enemies_active_visible += 1
+
+	# Beam channel state snapshot
+	var beams: Array = get_tree().get_nodes_in_group("beams")
+	var beams_total: int = beams.size()
+	var beams_channeling: int = 0
+	var beams_visible: int = 0
+	var beam_details: Array = []
+	for b in beams:
+		if not is_instance_valid(b):
+			continue
+		if b.has_method("is_channeling") and bool(b.call("is_channeling")):
+			beams_channeling += 1
+		if b.visible:
+			beams_visible += 1
+		if beam_details.size() < 3 and b.has_method("debug_state"):
+			beam_details.append(b.call("debug_state"))
+
+	var max_allowed = max(expected_step, hard_cap)
+	print("[Guard] Cancelled abnormal move: ", step_dist, " px (limit ", max_allowed, ")")
+	print("  delta=", delta, " move_speed=", move_speed, " vel=", velocity, " | vel_len=", velocity.length())
+	print("  prev_pos=", prev_pos, " attempted_pos=", attempted_pos)
+	print("  paused=", paused, " intermission=", intermission, " awaiting_character=", awaiting_character, " ui_modal=", ui_modal)
+	print("  enemies total=", enemies_total, " active_visible=", enemies_active_visible)
+	print("  beams total=", beams_total, " channeling=", beams_channeling, " visible=", beams_visible)
+	if beam_details.size() > 0:
+		print("  beam_details=", beam_details)

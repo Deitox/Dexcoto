@@ -80,6 +80,8 @@ func activate(pos: Vector2, dir: Vector2, dmg: int, col: Color, effect: Dictiona
 	_time = 0.0
 	_active = true
 	visible = true
+	if not is_in_group("beams"):
+		add_to_group("beams")
 
 func _physics_process(delta: float) -> void:
 	if not _active:
@@ -188,7 +190,9 @@ func activate_channel(pos: Vector2, dir: Vector2, dps: float, col: Color, effect
 	_last_end_point = end_point
 	_time = 0.0
 	_active = true
-	visible = true
+	visible = _target != null
+	if not is_in_group("beams"):
+		add_to_group("beams")
 
 func channel(pos: Vector2, _dir: Vector2, dps: float, col: Color, effect: Dictionary = {}) -> void:
 	# Refresh channel: update dps and color; keep target if valid.
@@ -214,6 +218,18 @@ func _free_and_notify() -> void:
 		if pool and pool.has_method("on_beam_freed"):
 			pool.call("on_beam_freed", _beam_key)
 	queue_free()
+
+func is_channeling() -> bool:
+	return _channel
+
+func debug_state() -> Dictionary:
+	return {
+		"channel": _channel,
+		"has_target": (_target != null and is_instance_valid(_target)),
+		"visible": visible,
+		"aim": _aim_dir,
+		"shooter": String(_shooter_path),
+	}
 
 # Helper raycast to find first enemy along direction. Returns [target, end_point]
 func _raycast_enemy(from_pos: Vector2, dir: Vector2) -> Array:
