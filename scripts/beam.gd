@@ -183,6 +183,11 @@ func _free_and_notify() -> void:
 
 # Helper raycast to find first enemy along direction. Returns [target, end_point]
 func _raycast_enemy(from_pos: Vector2, dir: Vector2) -> Array:
+	# First, try a cone-based nearest-enemy search to avoid ghost colliders
+	var cone_target := _find_enemy_in_cone(from_pos, dir, max_length, 12.0)
+	if cone_target != null:
+		return [cone_target, cone_target.global_position]
+	# Fallback to physics ray stepping through hits
 	var space: PhysicsDirectSpaceState2D = get_world_2d().direct_space_state
 	var ndir: Vector2 = dir.normalized()
 	var start: Vector2 = from_pos + ndir * 8.0
@@ -221,3 +226,42 @@ func _raycast_enemy(from_pos: Vector2, dir: Vector2) -> Array:
 		start = hit_pos + ndir * 1.0
 		traveled = (start - (from_pos + ndir * 8.0)).length()
 	return [null, last_end]
+
+# Search for the nearest valid enemy within a narrow cone along dir.
+func _find_enemy_in_cone(from_pos: Vector2, dir: Vector2, max_dist: float, half_angle_deg: float) -> Node:
+	var enemies: Array = get_tree().get_nodes_in_group("enemies")
+	if enemies.is_empty():
+		return null
+	var ndir := dir.normalized()
+	var cos_thresh := cos(deg_to_rad(half_angle_deg))
+	var best: Node = null
+	var best_score: float = -1.0
+	for e in enemies:
+		if not is_instance_valid(e):
+			continue
+		if not e.is_visible_in_tree():
+			continue
+		var ok := true
+		if e.has_method("get"):
+			var a = e.get("active")
+			if a != null and not bool(a):
+				ok = false
+			var hp = e.get("health")
+			if hp != null and int(hp) <= 0:
+				ok = false
+		if not ok:
+			continue
+		var v: Vector2 = e.global_position - from_pos
+		var dist := v.length()
+		if dist <= 0.001 or dist > max_dist:
+			continue
+		var dv := v / dist
+		var dotv := ndir.dot(dv)
+		if dotv < cos_thresh:
+			continue
+		# Favor alignment first, then proximity
+		var score := dotv * 1000.0 - dist
+		if score > best_score:
+			best_score = score
+			best = e
+	return best
