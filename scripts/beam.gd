@@ -9,6 +9,12 @@ var _time := 0.0
 var _active := false
 var _damage: int = 0
 var _effect: Dictionary = {}
+var _channel := false
+var _dps: float = 0.0
+var _tick_accum: float = 0.0
+var _tick_interval: float = 0.1
+var _target: Node = null
+var _beam_key: String = ""
 
 @onready var line: Line2D = $Line2D
 
@@ -71,8 +77,42 @@ func _physics_process(delta: float) -> void:
 	if not _active:
 		return
 	_time += delta
-	if _time >= duration:
-		queue_free()
+	if _channel:
+		# Update beam endpoint to current target position; if lost, end.
+		if _target == null or not is_instance_valid(_target):
+			_free_and_notify()
+			return
+		var from_local: Vector2 = Vector2.ZERO
+		var to_point: Vector2 = (_target.global_position - global_position)
+		_set_line(from_local, to_point)
+		# Apply tick DPS
+		_tick_accum += delta
+		while _tick_accum >= _tick_interval:
+			_tick_accum -= _tick_interval
+			var tick_damage: int = max(1, int(round(_dps * _tick_interval)))
+			if _target and _target.has_method("take_damage"):
+				if _effect is Dictionary and _effect.has("source"):
+					_target.set("last_damage_source", _effect["source"])
+				var final_damage := tick_damage
+				var player = get_tree().get_first_node_in_group("player")
+				var was_crit := false
+				if player != null and player.has_method("compute_crit_result"):
+					var res: Dictionary = player.compute_crit_result(final_damage)
+					final_damage = int(res.get("damage", final_damage))
+					was_crit = bool(res.get("crit", false))
+				_target.take_damage(final_damage)
+				if _target and _target.has_method("show_damage_feedback"):
+					_target.show_damage_feedback(final_damage, was_crit, _target.global_position)
+				if _effect is Dictionary and _effect.size() > 0 and _target and _target.has_method("apply_elemental_effect"):
+					_target.apply_elemental_effect(_effect, final_damage, _target.global_position)
+				# If target died, end channel
+				if not is_instance_valid(_target) or (_target.has_method("get") and int(_target.get("health")) <= 0):
+					_free_and_notify()
+					return
+		return
+	else:
+		if _time >= duration:
+			queue_free()
 
 func _set_line(from_local: Vector2, to_point: Vector2) -> void:
 	if not line:
@@ -80,3 +120,54 @@ func _set_line(from_local: Vector2, to_point: Vector2) -> void:
 	line.clear_points()
 	line.add_point(from_local)
 	line.add_point(to_point)
+
+# Persistent channel beams
+func activate_channel(pos: Vector2, dir: Vector2, dps: float, col: Color, effect: Dictionary = {}, beam_key: String = "") -> void:
+	global_position = pos
+	_dps = max(0.0, dps)
+	color = col
+	_effect = effect if effect != null else {}
+	_channel = true
+	_beam_key = beam_key
+	if line:
+		line.default_color = color
+	var space: PhysicsDirectSpaceState2D = get_world_2d().direct_space_state
+	var ndir: Vector2 = dir.normalized()
+	var from: Vector2 = pos + ndir * 8.0
+	var to: Vector2 = from + ndir * max_length
+	var query := PhysicsRayQueryParameters2D.create(from, to)
+	query.collide_with_areas = true
+	query.collide_with_bodies = true
+	query.hit_from_inside = false
+	var hit := space.intersect_ray(query)
+	var end_point: Vector2 = to
+	if hit and hit.has("position"):
+		end_point = Vector2(hit["position"])
+		var collider = hit.get("collider")
+		var target = collider
+		if target and not target.is_in_group("enemies") and target.get_parent():
+			var p = target.get_parent()
+			if p and p.is_in_group("enemies"):
+				target = p
+		if target and target.is_in_group("enemies"):
+			_target = target
+	_set_line(Vector2.ZERO, (end_point - global_position))
+	_time = 0.0
+	_active = true
+	visible = true
+
+func channel(pos: Vector2, _dir: Vector2, dps: float, col: Color, effect: Dictionary = {}) -> void:
+	# Refresh channel: update dps and color; keep target if valid.
+	global_position = pos
+	_dps = max(_dps, dps)
+	color = col
+	_effect = effect if effect != null else _effect
+	if line:
+		line.default_color = color
+
+func _free_and_notify() -> void:
+	if _beam_key != "":
+		var pool = get_tree().get_first_node_in_group("bullet_pool")
+		if pool and pool.has_method("on_beam_freed"):
+			pool.call("on_beam_freed", _beam_key)
+	queue_free()

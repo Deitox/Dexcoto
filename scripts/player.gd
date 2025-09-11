@@ -193,6 +193,9 @@ func _fire_weapon_at(w: Dictionary, pos: Vector2) -> void:
 		effect["color"] = color
 	# Attach source attribution for on-kill stacking effects
 	effect["source"] = {"kind":"weapon", "weapon_id": String(w.get("id","")), "tier": int(w.get("tier",1))}
+	# Include current fire interval after attack speed so beams can estimate DPS
+	var current_interval: float = float(w.get("fire_interval", 0.4)) / max(0.1, attack_speed_mult)
+	effect["fire_interval"] = current_interval
 	# Cap total projectiles and convert overflow into proportional damage
 	if shots > MAX_TOTAL_PROJECTILES:
 		var scale_up: float = float(shots) / float(MAX_TOTAL_PROJECTILES)
