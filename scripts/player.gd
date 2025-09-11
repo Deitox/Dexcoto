@@ -41,6 +41,7 @@ var item_counts: Dictionary = {}
 # Track bonus damage gained from exceeding caps
 var overflow_damage_mult_from_attack_speed: float = 1.0
 var overflow_damage_mult_from_projectiles: float = 1.0
+var overflow_currency_mult_from_move_speed: float = 1.0
 
 # Debug/guard against rare teleport glitches
 var _last_pos: Vector2 = Vector2.ZERO
@@ -277,12 +278,7 @@ func apply_upgrade(upg: Dictionary) -> void:
 	var v: Variant = upg.get("value")
 	match t:
 		"attack_speed":
-			attack_speed_mult *= (1.0 + float(v))
-			if attack_speed_mult > MAX_ATTACK_SPEED_MULT:
-				var overflow_factor: float = attack_speed_mult / MAX_ATTACK_SPEED_MULT
-				attack_speed_mult = MAX_ATTACK_SPEED_MULT
-				damage_mult *= overflow_factor
-				overflow_damage_mult_from_attack_speed *= overflow_factor
+			apply_attack_speed_multiplier(1.0 + float(v))
 		"damage":
 			damage_mult *= (1.0 + float(v))
 		"move_speed":
@@ -326,7 +322,20 @@ func apply_move_speed_multiplier(mult: float) -> void:
 	if move_speed > cap_speed:
 		var overflow_factor: float = move_speed / cap_speed
 		move_speed = cap_speed
-		currency_gain_mult *= max(1.0, overflow_factor)
+		var of = max(1.0, overflow_factor)
+		currency_gain_mult *= of
+		overflow_currency_mult_from_move_speed *= of
+
+# Applies a multiplicative change to attack speed with a cap.
+# Overflow beyond cap converts into Damage multiplier and tracked overflow.
+func apply_attack_speed_multiplier(mult: float) -> void:
+	var m = max(0.0, mult)
+	attack_speed_mult *= m
+	if attack_speed_mult > MAX_ATTACK_SPEED_MULT:
+		var overflow_factor: float = attack_speed_mult / MAX_ATTACK_SPEED_MULT
+		attack_speed_mult = MAX_ATTACK_SPEED_MULT
+		damage_mult *= overflow_factor
+		overflow_damage_mult_from_attack_speed *= overflow_factor
 
 func can_accept_weapon(w: Dictionary) -> bool:
 	if String(w.get("kind", "")) != "weapon":
@@ -507,7 +516,7 @@ func _apply_stack_effect(stype: String, conf: Dictionary) -> void:
 			_show_stack_cue("+%d%% Damage" % int(round(inc*100.0)), Color(1.0,0.5,0.5))
 		"attack_speed":
 			var inc2: float = float(conf.get("per_stack", 0.02))
-			attack_speed_mult *= (1.0 + inc2)
+			apply_attack_speed_multiplier(1.0 + inc2)
 			_show_stack_cue("+%d%% Attack Speed" % int(round(inc2*100.0)), Color(0.6,1.0,0.6))
 		"max_hp":
 			var add: int = int(conf.get("per_stack", 2))

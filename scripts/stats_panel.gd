@@ -87,6 +87,7 @@ func refresh() -> void:
 
 	var as_overflow_mult: float = float(player.get("overflow_damage_mult_from_attack_speed")) if player.has_method("get") else 1.0
 	var proj_overflow_mult: float = float(player.get("overflow_damage_mult_from_projectiles")) if player.has_method("get") else 1.0
+	var move_overflow_mult: float = float(player.get("overflow_currency_mult_from_move_speed")) if player.has_method("get") else 1.0
 
 	# Build grids in the static Host container
 	_clear_host()
@@ -96,7 +97,14 @@ func refresh() -> void:
 	var core := _add_grid()
 	_add_kv(core, "Health", "%d/%d" % [hp, hp_max])
 	_add_kv(core, "Regen", "%.1f/s" % regen)
-	_add_kv(core, "Move Speed", "%.0f px/s" % move_spd)
+	# Move speed with cap color when at cap (3x base)
+	var base_ms: float = float(player.get("base_move_speed")) if player.has_method("get") else move_spd
+	var ms_cap_mult: float = float(player.MAX_MOVE_SPEED_MULT)
+	var ms_cap_speed: float = base_ms * ms_cap_mult
+	var ms_col: Color = Color.WHITE
+	if move_spd >= ms_cap_speed - 0.01:
+		ms_col = Color("#ff7043")
+	_add_kv(core, "Move Speed", "%.0f px/s" % move_spd, ms_col)
 	# Defense / Damage taken multiplier
 	var dmg_taken_mult: float = float(player.get("incoming_damage_mult")) if player.has_method("get") else 1.0
 	if abs(dmg_taken_mult - 1.0) > 0.001:
@@ -127,10 +135,7 @@ func refresh() -> void:
 		as_col = Color("#ffb74d")
 	# Split long Attack Speed details into separate aligned rows to avoid clipping
 	_add_kv(off, "Attack Speed", "x%.2f" % atk_mult, as_col)
-	_add_kv(off, "Cap", "x%.2f" % atk_cap)
 	_add_kv(off, "Min Interval", "%.2fs" % min_interval)
-	if as_overflow_mult > 1.0:
-		_add_kv(off, "Overflow to Damage", _pct(as_overflow_mult), Color("#66bb6a"))
 	_add_kv(off, "Spread", _deg(spread_deg))
 
 	# Projectiles
@@ -138,12 +143,21 @@ func refresh() -> void:
 	var proj := _add_grid()
 	var proj_col: Color = Color("#ff7043") if proj_bonus >= proj_cap else Color.WHITE
 	_add_kv(proj, "Bonus Projectiles", "+%d (cap +%d)" % [proj_bonus, proj_cap], proj_col)
-	if proj_overflow_mult > 1.0:
-		_add_kv(proj, "Overflow to Damage", _pct(proj_overflow_mult), Color("#66bb6a"))
 	_add_kv(proj, "Projectile Speed", "x%.2f" % proj_speed_mult)
 	_add_kv(proj, "Per-shot cap", "%d" % per_shot_cap)
 	_add_kv(proj, "Global soft cap", "%d" % soft_proj_cap)
 	_add_kv(proj, "Beam threshold", "%.0f px/s" % beam_threshold)
+
+	# Overflows consolidated
+	if as_overflow_mult > 1.0 or proj_overflow_mult > 1.0 or move_overflow_mult > 1.0:
+		_add_section_header("Overflows", _tier_hex(5))
+		var ov := _add_grid()
+		if as_overflow_mult > 1.0:
+			_add_kv(ov, "Attack Speed -> Damage", _pct(as_overflow_mult), Color("#66bb6a"))
+		if proj_overflow_mult > 1.0:
+			_add_kv(ov, "Projectiles -> Damage", _pct(proj_overflow_mult), Color("#66bb6a"))
+		if move_overflow_mult > 1.0:
+			_add_kv(ov, "Move Speed -> Currency", _pct(move_overflow_mult), Color("#66bb6a"))
 
 	# Powers
 	var show_elem: bool = abs(elemental_power - 1.0) > 0.001

@@ -731,7 +731,10 @@ func _on_shop_buy(index: int) -> void:
 					pass
 				"overcharger":
 					if player:
-						player.attack_speed_mult *= 1.15
+						if player.has_method("apply_attack_speed_multiplier"):
+							player.apply_attack_speed_multiplier(1.15)
+						else:
+							player.attack_speed_mult *= 1.15
 						player.add_item("overcharger")
 				"adrenaline":
 					if player:
@@ -750,7 +753,10 @@ func _on_shop_buy(index: int) -> void:
 						player.add_item("boots")
 				"caffeine":
 					if player:
-						player.attack_speed_mult *= 1.10
+						if player.has_method("apply_attack_speed_multiplier"):
+							player.apply_attack_speed_multiplier(1.10)
+						else:
+							player.attack_speed_mult *= 1.10
 						player.add_item("caffeine")
 				"ammo_belt":
 					# Deprecated: bonus projectiles now only come from weapon tiers
