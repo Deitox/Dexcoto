@@ -743,7 +743,10 @@ func _on_shop_buy(index: int) -> void:
 						player.add_item("lifesteal_charm")
 				"boots":
 					if player:
-						player.move_speed *= 1.10
+						if player.has_method("apply_move_speed_multiplier"):
+							player.apply_move_speed_multiplier(1.10)
+						else:
+							player.move_speed *= 1.10
 						player.add_item("boots")
 				"caffeine":
 					if player:
@@ -940,7 +943,8 @@ func _start_next_wave() -> void:
 # Compute wave duration in seconds, increasing with wave and capped.
 func _compute_wave_duration(w: int) -> float:
 	var base: float = 20.0
-	var growth_per_wave: float = 5.0
+	# Slightly reduced per-wave bonus time; still capped to 90s
+	var growth_per_wave: float = 4.0
 	var grown := base + growth_per_wave * float(max(0, w - 1))
 	return min(90.0, grown)
 

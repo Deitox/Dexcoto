@@ -63,6 +63,9 @@ const MAX_TOTAL_PROJECTILES: int = 10
 const MAX_PROJECTILE_BONUS: int = 10 # cap on player.projectiles_per_shot
 const MAX_ATTACK_SPEED_MULT: float = 4.0
 const MIN_WEAPON_INTERVAL: float = 0.08
+const MAX_MOVE_SPEED_MULT: float = 3.0
+
+var base_move_speed: float = 0.0
 
 func _ready() -> void:
 	health = max_health
@@ -70,6 +73,8 @@ func _ready() -> void:
 	# Ensure we pick up the pool if its _ready adds the group after ours runs
 	call_deferred("_ensure_bullet_pool")
 	_last_pos = global_position
+	# Record base speed for cap calculations
+	base_move_speed = move_speed
 
 func set_position_and_reset_guard(pos: Vector2) -> void:
 	# Public helper to intentionally reposition the player without triggering the anti-teleport guard.
@@ -281,7 +286,7 @@ func apply_upgrade(upg: Dictionary) -> void:
 		"damage":
 			damage_mult *= (1.0 + float(v))
 		"move_speed":
-			move_speed = move_speed * (1.0 + float(v))
+			apply_move_speed_multiplier(1.0 + float(v))
 		"max_hp":
 			max_health += int(v)
 			health = min(max_health, health + int(v))
@@ -311,6 +316,17 @@ func apply_upgrade(upg: Dictionary) -> void:
 			turret_power_mult *= (1.0 + float(v))
 		_:
 			pass
+
+# Applies a multiplicative change to move speed with a 3x cap.
+# Overflow beyond 3x converts to Currency Gain multiplier.
+func apply_move_speed_multiplier(mult: float) -> void:
+	var m = max(0.0, mult)
+	var cap_speed: float = max(1.0, base_move_speed) * MAX_MOVE_SPEED_MULT
+	move_speed = move_speed * m
+	if move_speed > cap_speed:
+		var overflow_factor: float = move_speed / cap_speed
+		move_speed = cap_speed
+		currency_gain_mult *= max(1.0, overflow_factor)
 
 func can_accept_weapon(w: Dictionary) -> bool:
 	if String(w.get("kind", "")) != "weapon":
