@@ -88,6 +88,21 @@ func refresh() -> void:
 	var as_overflow_mult: float = float(player.get("overflow_damage_mult_from_attack_speed")) if player.has_method("get") else 1.0
 	var proj_overflow_mult: float = float(player.get("overflow_damage_mult_from_projectiles")) if player.has_method("get") else 1.0
 	var move_overflow_mult: float = float(player.get("overflow_currency_mult_from_move_speed")) if player.has_method("get") else 1.0
+	# Beam conversion overflow from projectile speed (estimate using fastest equipped weapon)
+	var beam_overflow_mult: float = 1.0
+	if bullet_pool and bullet_pool.has_method("get_beam_threshold") and player and player.has_method("get"):
+		var thresh: float = float(bullet_pool.call("get_beam_threshold"))
+		var psm: float = float(player.get("projectile_speed_mult"))
+		var max_speed: float = 0.0
+		var wlist = player.get("weapons")
+		if typeof(wlist) == TYPE_ARRAY:
+			for w in wlist:
+				if w is Dictionary and w.has("speed"):
+					var s: float = float(w["speed"]) * psm
+					if s > max_speed:
+						max_speed = s
+		if max_speed > thresh and thresh > 0.0:
+			beam_overflow_mult = max(1.0, max_speed / thresh)
 
 	# Build grids in the static Host container
 	_clear_host()
@@ -149,7 +164,7 @@ func refresh() -> void:
 	_add_kv(proj, "Beam threshold", "%.0f px/s" % beam_threshold)
 
 	# Overflows consolidated
-	if as_overflow_mult > 1.0 or proj_overflow_mult > 1.0 or move_overflow_mult > 1.0:
+	if as_overflow_mult > 1.0 or proj_overflow_mult > 1.0 or move_overflow_mult > 1.0 or beam_overflow_mult > 1.0:
 		_add_section_header("Overflows", _tier_hex(5))
 		var ov := _add_grid()
 		if as_overflow_mult > 1.0:
@@ -158,6 +173,8 @@ func refresh() -> void:
 			_add_kv(ov, "Projectiles -> Damage", _pct(proj_overflow_mult), Color("#66bb6a"))
 		if move_overflow_mult > 1.0:
 			_add_kv(ov, "Move Speed -> Currency", _pct(move_overflow_mult), Color("#66bb6a"))
+		if beam_overflow_mult > 1.0:
+			_add_kv(ov, "Proj Speed -> Beam Dmg", _pct(beam_overflow_mult), Color("#66bb6a"))
 
 	# Powers
 	var show_elem: bool = abs(elemental_power - 1.0) > 0.001
