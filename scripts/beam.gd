@@ -103,8 +103,14 @@ func _physics_process(delta: float) -> void:
 				if now - _last_channel_time > _linger_after_no_target:
 					_free_and_notify()
 					return
-		var to_point: Vector2 = (_target.global_position - global_position) if (_target != null and is_instance_valid(_target)) else (_last_end_point - global_position)
-		_set_line(from_local, to_point)
+		if _target != null and is_instance_valid(_target):
+			var to_point: Vector2 = (_target.global_position - global_position)
+			_set_line(from_local, to_point)
+			visible = true
+		else:
+			# No valid target yet; hide beam to avoid apparent targeting of non-existent enemies
+			visible = false
+			return
 		# Apply tick DPS
 		_tick_accum += delta
 		while _tick_accum >= _tick_interval:
