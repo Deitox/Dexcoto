@@ -1,35 +1,50 @@
 extends Control
 
+@export var debug_stats: bool = false
+var _refresh_requested: bool = false
+var _size_wait_attempts: int = 0
+
+func _dbg(msg: String) -> void:
+	if debug_stats:
+		print("[StatsPanel] ", msg)
+
 @onready var _rich: RichTextLabel = $RichText if has_node("RichText") else null
 var _host: VBoxContainer = null
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_WHEN_PAUSED
 
-	# Make this panel fill its parent.
-	set_anchors_preset(Control.PRESET_FULL_RECT)
-	offset_left = 0
-	offset_top = 0
-	offset_right = 0
-	offset_bottom = 0
+	# Respect container-driven layout: if parent is a Container (VBox/HBox/Scroll),
+	# don't override anchors. Only force anchors when free-floating.
+	var parent_is_container := get_parent() is Container
+	if not parent_is_container:
+		set_anchors_preset(Control.PRESET_FULL_RECT)
+		offset_left = 0
+		offset_top = 0
+		offset_right = 0
+		offset_bottom = 0
 	size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	size_flags_vertical = Control.SIZE_EXPAND_FILL
 
-	if has_signal("visibility_changed"):
-		visibility_changed.connect(_on_visibility_changed)
-	# Also listen for parent (StatsPanel) visibility changes
-	var p := get_parent()
-	if p and p.has_signal("visibility_changed"):
-		p.visibility_changed.connect(_on_visibility_changed)
+	_dbg("_ready: parent_is_container=%s paused=%s" % [str(parent_is_container), str(get_tree().paused)])
+	_fix_parent_layout()
+
+	# Listen for visibility changes on self and ancestors (VBox, Panel)
+	_connect_visibility_chain()
 
 	_ensure_host()
+	_fix_scroll_layout()
 	set_process(true)
 	# Defer initial refresh to allow Player to enter groups in Main._ready
 	call_deferred("refresh")
 
 func _on_visibility_changed() -> void:
-	if visible:
-		refresh()
+	var vtree := is_visible_in_tree()
+	_dbg("visibility_changed: is_visible_in_tree=%s (visible=%s)" % [str(vtree), str(visible)])
+	if vtree:
+		_fix_parent_layout()
+		_fix_scroll_layout()
+		_request_refresh()
 
 # Helpers for formatting
 static func _pct(v: float) -> String:
@@ -57,17 +72,42 @@ static func _tier_hex(t: int) -> String:
 	return c.to_html(false)
 
 func refresh() -> void:
+	_dbg("refresh() called; paused=%s visible_in_tree=%s" % [str(get_tree().paused), str(is_visible_in_tree())])
+	if not is_visible_in_tree():
+		_dbg("skip refresh: not visible in tree")
+		return
 	var player = get_tree().get_first_node_in_group("player")
 	if player == null:
 		player = _find_player_fallback()
 	if player == null:
+		_dbg("No player found; clearing host and showing placeholder")
+		_ensure_host()
 		_clear_host()
+		# Visual placeholder to verify the panel renders even when no player
+		var placeholder := Label.new()
+		placeholder.text = "No player found"
+		_host.add_child(placeholder)
 		return
 
 	var bullet_pool = get_tree().get_first_node_in_group("bullet_pool")
 	if _rich:
 		_rich.visible = false
 	_ensure_host()
+	if _host == null:
+		push_error("StatsPanel: _ensure_host() failed to resolve Host")
+		return
+	_dbg("Using Host at path=%s child_count(before)=%d" % [_host.get_path(), _host.get_child_count()])
+
+	# If layout hasn't been sized yet, defer briefly to let containers assign size.
+	var scroll_ctrl: Control = get_node_or_null("Scroll") as Control
+	if scroll_ctrl and (scroll_ctrl.size.y <= 0.0 or size.y <= 0.0):
+		if _size_wait_attempts < 5:
+			_size_wait_attempts += 1
+			_dbg("deferring refresh for layout (attempt %d), stats.size=%s scroll.size=%s" % [_size_wait_attempts, str(size), str(scroll_ctrl.size)])
+			call_deferred("refresh")
+			return
+		else:
+			_dbg("continuing despite zero size after attempts")
 
 	# Core multipliers and caps
 	var dmg_mult: float = float(player.get("damage_mult"))
@@ -119,6 +159,7 @@ func refresh() -> void:
 
 	# Build grids in the Host container
 	_clear_host()
+	var _row_count := 0
 
 	# Core
 	_add_section_header("Core", _tier_hex(1))
@@ -212,6 +253,61 @@ func refresh() -> void:
 			_add_kv(eco, "Currency Gain", "x%.2f (%s)" % [currency_mult, _pct(currency_mult)])
 		if lifesteal > 0:
 			_add_kv(eco, "Lifesteal", "+%d HP/kill" % lifesteal)
+	_dbg("refresh() built UI; host_children=%d size=%s min_size=%s visible=%s" % [_host.get_child_count(), str(_host.size), str(_host.get_minimum_size()), str(_host.is_visible_in_tree())])
+	_size_wait_attempts = 0
+	if debug_stats:
+		call_deferred("_post_build_layout_check")
+
+func _post_build_layout_check() -> void:
+	await get_tree().process_frame
+	if _host:
+		_dbg("post-frame: host size=%s min_size=%s visible_in_tree=%s" % [str(_host.size), str(_host.get_minimum_size()), str(_host.is_visible_in_tree())])
+		var scroll := get_node_or_null("Scroll")
+		if scroll:
+			_dbg("post-frame: scroll size=%s" % str((scroll as Control).size))
+		_dbg("post-frame: stats node size=%s" % str(size))
+		# Dump first-level children for quick inspection
+		var idx := 0
+		for ch in _host.get_children():
+			if ch is Control:
+				var c := ch as Control
+				_dbg("child[%d]=%s size=%s min=%s" % [idx, ch.get_class(), str(c.size), str(c.get_minimum_size())])
+			else:
+				_dbg("child[%d]=%s" % [idx, ch.get_class()])
+			idx += 1
+
+func _connect_visibility_chain() -> void:
+	var n: Node = self
+	var c := Callable(self, "_on_visibility_changed")
+	while n:
+		if n.has_signal("visibility_changed") and not n.is_connected("visibility_changed", c):
+			n.visibility_changed.connect(c)
+			_dbg("connected visibility_changed on %s" % n.name)
+		if n.get_parent() == null or n is CanvasLayer:
+			break
+		n = n.get_parent()
+
+func _fix_parent_layout() -> void:
+	# Make sure the VBox container under StatsPanel fills the panel with 8px margins.
+	var vb := get_parent() as VBoxContainer
+	if vb:
+		vb.set_anchors_preset(Control.PRESET_FULL_RECT)
+		vb.offset_left = 8
+		vb.offset_top = 8
+		vb.offset_right = -8
+		vb.offset_bottom = -8
+		vb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		vb.size_flags_vertical = Control.SIZE_EXPAND_FILL
+
+func _request_refresh() -> void:
+	if _refresh_requested:
+		return
+	_refresh_requested = true
+	call_deferred("_do_deferred_refresh")
+
+func _do_deferred_refresh() -> void:
+	_refresh_requested = false
+	refresh()
 
 func _find_player_fallback() -> Node:
 	# Try common locations if group lookup failed (e.g., order of _ready callbacks)
@@ -240,30 +336,53 @@ func _process(delta: float) -> void:
 
 # Container helpers
 func _ensure_host() -> void:
+	# Prefer the Host under the ScrollContainer provided by the scene.
 	if _host and is_instance_valid(_host):
 		return
-	if has_node("Host"):
+	if has_node("Scroll/Host"):
+		_host = get_node("Scroll/Host") as VBoxContainer
+		_dbg("Resolved Host via Scroll/Host")
+	elif has_node("Host"):
+		# Backward compatibility with older scene layout
 		_host = get_node("Host") as VBoxContainer
+		_dbg("Resolved Host via direct Host child")
 	else:
-		# Fallback: create dynamically if the Host node is missing
+		# Safe fallback: create Scroll + Host so sizing/scrolling behave as expected
+		var scroll := ScrollContainer.new()
+		scroll.name = "Scroll"
+		scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+		scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		add_child(scroll)
+
 		_host = VBoxContainer.new()
 		_host.name = "Host"
-		add_child(_host)
+		_host.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		_host.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		scroll.add_child(_host)
+		_dbg("Created fallback Scroll + Host")
 
-	# Make Host fill this panel and behave nicely in containers.
-	_host.set_anchors_preset(Control.PRESET_FULL_RECT)
-	_host.offset_left = 0
-	_host.offset_top = 0
-	_host.offset_right = 0
-	_host.offset_bottom = 0
+	# Let container manage Host sizing; just set size flags and spacing.
 	_host.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_host.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	# Add vertical spacing between section blocks
 	_host.add_theme_constant_override("separation", 8)
+	_fix_scroll_layout()
+
+func _fix_scroll_layout() -> void:
+	var scroll := get_node_or_null("Scroll") as ScrollContainer
+	if scroll:
+		scroll.set_anchors_preset(Control.PRESET_FULL_RECT)
+		scroll.offset_left = 0
+		scroll.offset_top = 0
+		scroll.offset_right = 0
+		scroll.offset_bottom = 0
+		scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 
 func _clear_host() -> void:
 	if _host == null:
 		return
+	_dbg("Clearing Host; children=%d" % _host.get_child_count())
 	for c in _host.get_children():
 		c.queue_free()
 
@@ -291,26 +410,37 @@ func _add_section_header(title: String, hex: String) -> void:
 	sep.modulate = Color(1,1,1,0.35)
 	_host.add_child(sep)
 
-func _add_grid() -> GridContainer:
-	var g := GridContainer.new()
-	g.columns = 2
-	g.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	g.add_theme_constant_override("h_separation", 12)
-	g.add_theme_constant_override("v_separation", 4)
-	_host.add_child(g)
-	return g
+func _add_grid() -> Container:
+	# Use a vertical stack; each KV will be an HBox row inside this stack.
+	var v := VBoxContainer.new()
+	v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	v.add_theme_constant_override("separation", 4)
+	_host.add_child(v)
+	return v
 
-func _add_kv(grid: GridContainer, key: String, val: String, val_color: Color = Color.WHITE) -> void:
+func _add_kv(stack: Container, key: String, val: String, val_color: Color = Color.WHITE) -> void:
+	# Responsive row: [key][spacer][value] so value aligns to the right edge.
+	var row := HBoxContainer.new()
+	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_theme_constant_override("separation", 8)
+
 	var lk := Label.new()
 	lk.text = key
 	lk.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-	lk.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	lk.custom_minimum_size = Vector2(140, 0)
+	lk.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+
+	var spacer := Control.new()
+	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+
 	var lv := Label.new()
 	lv.text = val
 	lv.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	lv.add_theme_color_override("font_color", val_color)
-	# Allow value column to expand; rely on default wrapping/clipping
 	lv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	grid.add_child(lk)
-	grid.add_child(lv)
+
+	row.add_child(lk)
+	row.add_child(spacer)
+	row.add_child(lv)
+
+	stack.add_child(row)
