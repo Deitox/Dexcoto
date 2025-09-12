@@ -1,13 +1,5 @@
 extends Control
 
-@export var debug_stats: bool = false
-var _refresh_requested: bool = false
-var _size_wait_attempts: int = 0
-
-func _dbg(msg: String) -> void:
-	if debug_stats:
-		print("[StatsPanel] ", msg)
-
 @onready var _rich: RichTextLabel = $RichText if has_node("RichText") else null
 var _host: VBoxContainer = null
 
@@ -26,7 +18,6 @@ func _ready() -> void:
 	size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	size_flags_vertical = Control.SIZE_EXPAND_FILL
 
-	_dbg("_ready: parent_is_container=%s paused=%s" % [str(parent_is_container), str(get_tree().paused)])
 	_fix_parent_layout()
 
 	# Listen for visibility changes on self and ancestors (VBox, Panel)
@@ -34,17 +25,15 @@ func _ready() -> void:
 
 	_ensure_host()
 	_fix_scroll_layout()
-	set_process(true)
+	# No continuous processing needed; refresh only on visibility or external calls
 	# Defer initial refresh to allow Player to enter groups in Main._ready
 	call_deferred("refresh")
 
 func _on_visibility_changed() -> void:
-	var vtree := is_visible_in_tree()
-	_dbg("visibility_changed: is_visible_in_tree=%s (visible=%s)" % [str(vtree), str(visible)])
-	if vtree:
+	if is_visible_in_tree():
 		_fix_parent_layout()
 		_fix_scroll_layout()
-		_request_refresh()
+		call_deferred("refresh")
 
 # Helpers for formatting
 static func _pct(v: float) -> String:
@@ -71,22 +60,16 @@ static func _tier_hex(t: int) -> String:
 		c = Color(1.0, 0.3, 0.3)
 	return c.to_html(false)
 
+
 func refresh() -> void:
-	_dbg("refresh() called; paused=%s visible_in_tree=%s" % [str(get_tree().paused), str(is_visible_in_tree())])
 	if not is_visible_in_tree():
-		_dbg("skip refresh: not visible in tree")
 		return
 	var player = get_tree().get_first_node_in_group("player")
 	if player == null:
 		player = _find_player_fallback()
 	if player == null:
-		_dbg("No player found; clearing host and showing placeholder")
 		_ensure_host()
 		_clear_host()
-		# Visual placeholder to verify the panel renders even when no player
-		var placeholder := Label.new()
-		placeholder.text = "No player found"
-		_host.add_child(placeholder)
 		return
 
 	var bullet_pool = get_tree().get_first_node_in_group("bullet_pool")
@@ -94,20 +77,7 @@ func refresh() -> void:
 		_rich.visible = false
 	_ensure_host()
 	if _host == null:
-		push_error("StatsPanel: _ensure_host() failed to resolve Host")
 		return
-	_dbg("Using Host at path=%s child_count(before)=%d" % [_host.get_path(), _host.get_child_count()])
-
-	# If layout hasn't been sized yet, defer briefly to let containers assign size.
-	var scroll_ctrl: Control = get_node_or_null("Scroll") as Control
-	if scroll_ctrl and (scroll_ctrl.size.y <= 0.0 or size.y <= 0.0):
-		if _size_wait_attempts < 5:
-			_size_wait_attempts += 1
-			_dbg("deferring refresh for layout (attempt %d), stats.size=%s scroll.size=%s" % [_size_wait_attempts, str(size), str(scroll_ctrl.size)])
-			call_deferred("refresh")
-			return
-		else:
-			_dbg("continuing despite zero size after attempts")
 
 	# Core multipliers and caps
 	var dmg_mult: float = float(player.get("damage_mult"))
@@ -253,28 +223,7 @@ func refresh() -> void:
 			_add_kv(eco, "Currency Gain", "x%.2f (%s)" % [currency_mult, _pct(currency_mult)])
 		if lifesteal > 0:
 			_add_kv(eco, "Lifesteal", "+%d HP/kill" % lifesteal)
-	_dbg("refresh() built UI; host_children=%d size=%s min_size=%s visible=%s" % [_host.get_child_count(), str(_host.size), str(_host.get_minimum_size()), str(_host.is_visible_in_tree())])
-	_size_wait_attempts = 0
-	if debug_stats:
-		call_deferred("_post_build_layout_check")
-
-func _post_build_layout_check() -> void:
-	await get_tree().process_frame
-	if _host:
-		_dbg("post-frame: host size=%s min_size=%s visible_in_tree=%s" % [str(_host.size), str(_host.get_minimum_size()), str(_host.is_visible_in_tree())])
-		var scroll := get_node_or_null("Scroll")
-		if scroll:
-			_dbg("post-frame: scroll size=%s" % str((scroll as Control).size))
-		_dbg("post-frame: stats node size=%s" % str(size))
-		# Dump first-level children for quick inspection
-		var idx := 0
-		for ch in _host.get_children():
-			if ch is Control:
-				var c := ch as Control
-				_dbg("child[%d]=%s size=%s min=%s" % [idx, ch.get_class(), str(c.size), str(c.get_minimum_size())])
-			else:
-				_dbg("child[%d]=%s" % [idx, ch.get_class()])
-			idx += 1
+	# Finished building
 
 func _connect_visibility_chain() -> void:
 	var n: Node = self
@@ -282,7 +231,6 @@ func _connect_visibility_chain() -> void:
 	while n:
 		if n.has_signal("visibility_changed") and not n.is_connected("visibility_changed", c):
 			n.visibility_changed.connect(c)
-			_dbg("connected visibility_changed on %s" % n.name)
 		if n.get_parent() == null or n is CanvasLayer:
 			break
 		n = n.get_parent()
@@ -299,15 +247,7 @@ func _fix_parent_layout() -> void:
 		vb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		vb.size_flags_vertical = Control.SIZE_EXPAND_FILL
 
-func _request_refresh() -> void:
-	if _refresh_requested:
-		return
-	_refresh_requested = true
-	call_deferred("_do_deferred_refresh")
-
-func _do_deferred_refresh() -> void:
-	_refresh_requested = false
-	refresh()
+# No coalescing helper needed anymore; refresh happens on visibility or external triggers
 
 func _find_player_fallback() -> Node:
 	# Try common locations if group lookup failed (e.g., order of _ready callbacks)
@@ -321,18 +261,8 @@ func _find_player_fallback() -> Node:
 			return found
 	return null
 
-var _accum: float = 0.0
-const REFRESH_INTERVAL := 0.5
-
-func _process(delta: float) -> void:
-	# Light auto-refresh while visible to keep numbers current
-	if not is_visible_in_tree():
-		_accum = 0.0
-		return
-	_accum += delta
-	if _accum >= REFRESH_INTERVAL:
-		_accum = 0.0
-		refresh()
+# No periodic auto-refresh; Main calls refresh when showing the panel,
+# and visibility_changed triggers a one-shot deferred refresh.
 
 # Container helpers
 func _ensure_host() -> void:
@@ -341,11 +271,9 @@ func _ensure_host() -> void:
 		return
 	if has_node("Scroll/Host"):
 		_host = get_node("Scroll/Host") as VBoxContainer
-		_dbg("Resolved Host via Scroll/Host")
 	elif has_node("Host"):
 		# Backward compatibility with older scene layout
 		_host = get_node("Host") as VBoxContainer
-		_dbg("Resolved Host via direct Host child")
 	else:
 		# Safe fallback: create Scroll + Host so sizing/scrolling behave as expected
 		var scroll := ScrollContainer.new()
@@ -360,7 +288,6 @@ func _ensure_host() -> void:
 		_host.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		_host.size_flags_vertical = Control.SIZE_EXPAND_FILL
 		scroll.add_child(_host)
-		_dbg("Created fallback Scroll + Host")
 
 	# Let container manage Host sizing; just set size flags and spacing.
 	_host.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -382,7 +309,6 @@ func _fix_scroll_layout() -> void:
 func _clear_host() -> void:
 	if _host == null:
 		return
-	_dbg("Clearing Host; children=%d" % _host.get_child_count())
 	for c in _host.get_children():
 		c.queue_free()
 
