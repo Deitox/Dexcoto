@@ -264,10 +264,14 @@ text = "6: --"
 [node name="StatsPanel" type="Panel" parent="UI"]
 visible = false
 z_index = 1000
-offset_left = 1640.0
-offset_top = 72.0
-offset_right = 1904.0
-offset_bottom = 1000.0
+anchors_preset = 11
+anchor_left = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -420.0
+offset_top = 16.0
+offset_right = -16.0
+offset_bottom = -16.0
 mouse_filter = 2
 
 [node name="VBox" type="VBoxContainer" parent="UI/StatsPanel"]
@@ -284,13 +288,20 @@ text = "Player Stats"
 horizontal_alignment = 1
 
 [node name="Stats" type="Control" parent="UI/StatsPanel/VBox"]
-custom_minimum_size = Vector2(240, 700)
+custom_minimum_size = Vector2(320, 0)
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 script = ExtResource("12")
 
-[node name="Host" type="VBoxContainer" parent="UI/StatsPanel/VBox/Stats"]
+[node name="Scroll" type="ScrollContainer" parent="UI/StatsPanel/VBox/Stats"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+follow_focus = true
+horizontal_scroll_mode = 0
+
+[node name="Host" type="VBoxContainer" parent="UI/StatsPanel/VBox/Stats/Scroll"]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
