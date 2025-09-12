@@ -89,6 +89,13 @@ const GROUP_STAGGER: float = 0.12
 const GROUP_GAP_MIN: float = 1.6
 const GROUP_GAP_MAX: float = 3.2
 
+# Undersaturation boosting: increase spawns when few enemies are active
+const LOW_ENEMY_FRACTION: float = 0.33 # below this % of soft cap, boost
+const LOW_ENEMY_BOOST: float = 1.5     # multiply group size / count
+const VERY_LOW_ENEMIES: int = 4        # if at or below, use stronger boost
+const VERY_LOW_BOOST: float = 2.25
+const LOW_ENEMY_MIN_GAP: float = 0.25  # tighten gap when low
+
 var wave: int = 1
 var score: int = 0
 var wave_time: float = 20.0
@@ -296,6 +303,13 @@ func _spawn_enemies() -> void:
 		var over := enemies - soft_cap
 		count = max(1, int(round(float(base_count) * 0.4)))
 		tier += min(3, int(floor(float(over) / 20.0)) + 1)
+	else:
+		# If we're well below the target density, boost count to catch up fast.
+		var low_thresh := int(round(float(soft_cap) * LOW_ENEMY_FRACTION))
+		if enemies < low_thresh:
+			var boost := VERY_LOW_BOOST if enemies <= VERY_LOW_ENEMIES else LOW_ENEMY_BOOST
+			var desired = max(0, low_thresh - enemies)
+			count = max(int(ceil(float(count) * boost)), desired)
 	# Hard cap: never exceed MAX_ENEMIES active
 	var allowed: int = max(0, hard_cap - enemies)
 	count = min(count, allowed)
@@ -329,6 +343,13 @@ func _spawn_enemies_grouped() -> void:
 		var over := enemies - soft_cap
 		count = max(1, int(round(float(base_count) * 0.4)))
 		tier += min(3, int(floor(float(over) / 20.0)) + 1)
+	else:
+		# Boost spawn size when enemy count is too low.
+		var low_thresh := int(round(float(soft_cap) * LOW_ENEMY_FRACTION))
+		if enemies < low_thresh:
+			var boost := VERY_LOW_BOOST if enemies <= VERY_LOW_ENEMIES else LOW_ENEMY_BOOST
+			var desired = max(0, low_thresh - enemies)
+			count = max(int(ceil(float(count) * boost)), desired)
 	var allowed: int = max(0, hard_cap - enemies)
 	count = min(count, allowed)
 	if count <= 0:
@@ -338,7 +359,13 @@ func _spawn_enemies_grouped() -> void:
 	# Choose a group size and positions (larger groups as waves rise)
 	var gmin := 2
 	var gmax := int(dp.get("group_max", 5)) + int(clamp(floor(float(wave) / 3.0), 0, 6))
-	var gsize: int = int(clamp(randi() % (gmax - gmin + 1) + gmin, 1, max(1, count)))
+	var gsize: int
+	# When low on enemies, bias toward larger groups to catch up quickly.
+	var low_thresh2 := int(round(float(soft_cap) * LOW_ENEMY_FRACTION))
+	if enemies < low_thresh2:
+		gsize = min(max(gmin, count), gmax)
+	else:
+		gsize = int(clamp(randi() % (gmax - gmin + 1) + gmin, 1, max(1, count)))
 	var positions: Array = []
 	for i in range(gsize):
 		positions.append(_random_spawn_position())
@@ -367,7 +394,12 @@ func _spawn_enemies_grouped() -> void:
 	if enemies > soft_cap:
 		gap = min(GROUP_GAP_MAX + 0.8, gap * 1.25)
 	else:
-		gap = max(GROUP_GAP_MIN * 0.6, gap * 0.9)
+		# Tighten gap more aggressively when very few enemies are active.
+		var low_thresh3 := int(round(float(soft_cap) * LOW_ENEMY_FRACTION))
+		if enemies < low_thresh3:
+			gap = max(LOW_ENEMY_MIN_GAP, gap * 0.6)
+		else:
+			gap = max(GROUP_GAP_MIN * 0.6, gap * 0.9)
 	spawn_timer.wait_time = gap
 
 func _adjust_spawning() -> void:
@@ -378,7 +410,12 @@ func _adjust_spawning() -> void:
 	if enemies > soft_cap:
 		spawn_timer.wait_time = min(3.0, spawn_timer.wait_time * 1.25)
 	else:
-		spawn_timer.wait_time = max(0.25, spawn_timer.wait_time * 0.95)
+		# If we are far below the target density, accelerate more aggressively.
+		var low_thresh := int(round(float(soft_cap) * LOW_ENEMY_FRACTION))
+		if enemies < low_thresh:
+			spawn_timer.wait_time = max(LOW_ENEMY_MIN_GAP, spawn_timer.wait_time * 0.75)
+		else:
+			spawn_timer.wait_time = max(0.25, spawn_timer.wait_time * 0.95)
 
 # Scale enemy caps with wave to allow much larger late-wave counts.
 func _cap_scale_for_wave(w: int) -> float:
