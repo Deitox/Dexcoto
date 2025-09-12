@@ -79,9 +79,9 @@ const BOSS_SCENE: PackedScene = preload("res://scenes/Boss.tscn")
 # HUD highlight map for weapon changes while in shop
 var _hud_highlight: Dictionary = {}
 
-# Performance caps
-const SOFT_CAP_ENEMIES: int = 40
-const MAX_ENEMIES: int = 60
+# Performance caps (raised for higher density)
+const SOFT_CAP_ENEMIES: int = 80
+const MAX_ENEMIES: int = 150
 
 # Spawn grouping and telegraphing
 const GROUP_BASE_DELAY: float = 0.6
@@ -294,9 +294,8 @@ func _spawn_enemies() -> void:
 	var hard_cap := int(round(float(MAX_ENEMIES) * float(dp.get("cap_mult", 1.0)) * cap_scale))
 	var count := int(round(float(base_count) * float(dp.get("count_mult", 1.0))))
 
-	# Tier now increases every 2 waves for higher HP ramp, plus difficulty bonus
-	var tier := 1 + int(floor(max(0.0, float(wave - 1)) / 2.0)) + int(dp.get("tier_bonus", 0))
-	tier = max(1, tier)
+	# Compute tier with extra ramp from wave 7+
+	var tier := _tier_for_wave(wave, dp)
 
 	if enemies > soft_cap:
 		# reduce count and increase tier to keep pressure without clutter
@@ -335,9 +334,8 @@ func _spawn_enemies_grouped() -> void:
 	var hard_cap := int(round(float(MAX_ENEMIES) * float(dp.get("cap_mult", 1.0)) * cap_scale))
 	var count := int(round(float(base_count) * float(dp.get("count_mult", 1.0))))
 
-	# Tier increases every 2 waves, plus difficulty bonus
-	var tier := 1 + int(floor(max(0.0, float(wave - 1)) / 2.0)) + int(dp.get("tier_bonus", 0))
-	tier = max(1, tier)
+	# Compute tier with extra ramp from wave 7+
+	var tier := _tier_for_wave(wave, dp)
 
 	if enemies > soft_cap:
 		var over := enemies - soft_cap
@@ -419,8 +417,17 @@ func _adjust_spawning() -> void:
 
 # Scale enemy caps with wave to allow much larger late-wave counts.
 func _cap_scale_for_wave(w: int) -> float:
-	# Grows ~12% per wave, capped at 4x by default.
-	return min(4.0, 1.0 + 0.12 * float(max(0, w - 1)))
+	# Grows faster than before (~18%/wave), capped at 5x base caps.
+	return min(5.0, 1.0 + 0.18 * float(max(0, w - 1)))
+
+# Compute enemy tier from wave with an extra ramp starting at wave 7.
+func _tier_for_wave(w: int, dp: Dictionary) -> int:
+	var base := 1 + int(floor(max(0.0, float(w - 1)) / 2.0))
+	if w >= 7:
+		# From wave 7 onward, add another tier every 2 waves (double the speed).
+		base += int(floor(float(w - 6) / 2.0))
+	base += int(dp.get("tier_bonus", 0))
+	return max(1, base)
 
 
 func _random_spawn_position() -> Vector2:
@@ -974,10 +981,11 @@ func _start_next_wave() -> void:
 	_update_ui()
 	wave_timer.start()
 	# Faster spawn cadence baseline for stronger pressure, scaled by difficulty
-	var base_wait: float = max(0.20, 0.9 - float(wave) * 0.09)
+	# Start faster and ramp down more aggressively each wave.
+	var base_wait: float = max(0.10, 0.80 - float(wave) * 0.10)
 	var dp: Dictionary = _difficulty_params()
 	var cadence_mult: float = float(dp.get("cadence_mult", 1.0))
-	spawn_timer.wait_time = clamp(base_wait * cadence_mult, 0.12, 3.0)
+	spawn_timer.wait_time = clamp(base_wait * cadence_mult, 0.10, 3.0)
 	spawn_timer.start()
 	# Spawn a boss every 5th wave (5,10,15,...) once per wave
 	if wave % 5 == 0:
