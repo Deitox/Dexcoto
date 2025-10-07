@@ -232,10 +232,10 @@ static func generate_offers(count: int, wave: int = 1) -> Array[Dictionary]:
 				offer["tier"] = t
 				# Scale cost for higher tier
 				var base_cost: int = int(offer.get("cost", 10))
-				var mult: float = pow(1.5, float(t - 1))
+				var mult: float = pow(1.2, float(t - 1))
 				offer["cost"] = int(round(base_cost * mult))
 		# Global wave-based price scaling to curb runaway power
-		var wave_mult: float = pow(1.10, float(max(0, wave - 1)))
+		var wave_mult: float = pow(1.85, float(max(0, wave - 1)))
 		var cur_cost: int = int(offer.get("cost", 10))
 		offer["cost"] = max(1, int(round(float(cur_cost) * wave_mult)))
 		offers.append(offer)

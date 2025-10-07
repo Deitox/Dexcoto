@@ -55,7 +55,7 @@ func _apply_tier() -> void:
 	var dmg: int = base_dmg
 	var spd: float = base_speed
 	for i in range(2, t + 1):
-		hp = int(round(hp * 1.5))
+		hp = int(round(hp * 1.55))
 		dmg = int(round(dmg * 1.25))
 		spd *= 0.95
 	max_health = hp

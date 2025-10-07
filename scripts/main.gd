@@ -80,8 +80,8 @@ const BOSS_SCENE: PackedScene = preload("res://scenes/Boss.tscn")
 var _hud_highlight: Dictionary = {}
 
 # Performance caps (raised for higher density)
-const SOFT_CAP_ENEMIES: int = 80
-const MAX_ENEMIES: int = 150
+const SOFT_CAP_ENEMIES: int = 20
+const MAX_ENEMIES: int = 40
 
 # Spawn grouping and telegraphing
 const GROUP_BASE_DELAY: float = 0.6
@@ -518,7 +518,7 @@ func _clear_hud_highlights() -> void:
 func _xp_for_next_level(l: int) -> int:
 	# Non-linear XP curve: modest early, steeper later
 	var lf := float(max(1, l))
-	var need := 6.0 + 4.0 * lf + 0.8 * lf * lf
+	var need := 6.0 + 4.0 * lf + 5.00 * lf * lf
 	return max(8, int(round(need)))
 
 func _gain_xp(pts: int) -> void:
