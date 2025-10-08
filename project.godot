@@ -47,6 +47,17 @@ ui_left={
 "pressed": false,
 "type": "InputEventKey",
 "unicode": 0
+}, {
+"button_index": 14,
+"device": 0,
+"pressed": false,
+"pressure": 0.0,
+"type": "InputEventJoypadButton"
+}, {
+"axis": 0,
+"axis_value": -1.0,
+"device": 0,
+"type": "InputEventJoypadMotion"
 }]
 }
 ui_right={
@@ -67,6 +78,17 @@ ui_right={
 "pressed": false,
 "type": "InputEventKey",
 "unicode": 0
+}, {
+"button_index": 15,
+"device": 0,
+"pressed": false,
+"pressure": 0.0,
+"type": "InputEventJoypadButton"
+}, {
+"axis": 0,
+"axis_value": 1.0,
+"device": 0,
+"type": "InputEventJoypadMotion"
 }]
 }
 ui_up={
@@ -87,6 +109,17 @@ ui_up={
 "pressed": false,
 "type": "InputEventKey",
 "unicode": 0
+}, {
+"button_index": 12,
+"device": 0,
+"pressed": false,
+"pressure": 0.0,
+"type": "InputEventJoypadButton"
+}, {
+"axis": 1,
+"axis_value": -1.0,
+"device": 0,
+"type": "InputEventJoypadMotion"
 }]
 }
 ui_down={
@@ -107,6 +140,17 @@ ui_down={
 "pressed": false,
 "type": "InputEventKey",
 "unicode": 0
+}, {
+"button_index": 13,
+"device": 0,
+"pressed": false,
+"pressure": 0.0,
+"type": "InputEventJoypadButton"
+}, {
+"axis": 1,
+"axis_value": 1.0,
+"device": 0,
+"type": "InputEventJoypadMotion"
 }]
 }
 

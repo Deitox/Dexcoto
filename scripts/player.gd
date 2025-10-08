@@ -142,27 +142,79 @@ func _get_nearest_enemy() -> Node2D:
 	return nearest
 
 func _ensure_default_input_actions() -> void:
-	var defaults := {
-		"ui_left": [Key.KEY_LEFT, Key.KEY_A],
-		"ui_right": [Key.KEY_RIGHT, Key.KEY_D],
-		"ui_up": [Key.KEY_UP, Key.KEY_W],
-		"ui_down": [Key.KEY_DOWN, Key.KEY_S],
+	var defaults: Dictionary = {
+		"ui_left": {
+			"keys": [Key.KEY_LEFT, Key.KEY_A],
+			"buttons": [JOY_BUTTON_DPAD_LEFT],
+			"motions": [{ "axis": JOY_AXIS_LEFT_X, "value": -1.0 }],
+		},
+		"ui_right": {
+			"keys": [Key.KEY_RIGHT, Key.KEY_D],
+			"buttons": [JOY_BUTTON_DPAD_RIGHT],
+			"motions": [{ "axis": JOY_AXIS_LEFT_X, "value": 1.0 }],
+		},
+		"ui_up": {
+			"keys": [Key.KEY_UP, Key.KEY_W],
+			"buttons": [JOY_BUTTON_DPAD_UP],
+			"motions": [{ "axis": JOY_AXIS_LEFT_Y, "value": -1.0 }],
+		},
+		"ui_down": {
+			"keys": [Key.KEY_DOWN, Key.KEY_S],
+			"buttons": [JOY_BUTTON_DPAD_DOWN],
+			"motions": [{ "axis": JOY_AXIS_LEFT_Y, "value": 1.0 }],
+		},
 	}
 	for action in defaults.keys():
 		if not InputMap.has_action(action):
 			InputMap.add_action(action)
-		for key in defaults[action]:
-			if not _action_has_physical_key(action, key):
+		var cfg: Dictionary = defaults.get(action, {})
+		var key_list: Array = cfg.get("keys", [])
+		for key in key_list:
+			var keycode: int = int(key)
+			if not _action_has_physical_key(action, keycode):
 				var ev := InputEventKey.new()
-				ev.physical_keycode = key
-				ev.keycode = key
+				ev.physical_keycode = keycode
+				ev.keycode = keycode
 				InputMap.action_add_event(action, ev)
+		var button_list: Array = cfg.get("buttons", [])
+		for button in button_list:
+			var button_index: int = int(button)
+			if not _action_has_joy_button(action, button_index):
+				var btn_ev := InputEventJoypadButton.new()
+				btn_ev.button_index = button_index
+				InputMap.action_add_event(action, btn_ev)
+		var motion_list: Array = cfg.get("motions", [])
+		for motion_variant in motion_list:
+			if typeof(motion_variant) != TYPE_DICTIONARY:
+				continue
+			var motion: Dictionary = motion_variant
+			var axis: int = int(motion.get("axis", 0))
+			var value: float = float(motion.get("value", 0.0))
+			if not _action_has_joy_axis(action, axis, value):
+				var motion_ev := InputEventJoypadMotion.new()
+				motion_ev.axis = axis
+				motion_ev.axis_value = value
+				InputMap.action_add_event(action, motion_ev)
 
-func _action_has_physical_key(action: String, key: Key) -> bool:
+func _action_has_physical_key(action: String, key: int) -> bool:
 	for e in InputMap.action_get_events(action):
 		if e is InputEventKey:
 			var event := e as InputEventKey
 			if event.physical_keycode == key or event.keycode == key:
+				return true
+	return false
+
+func _action_has_joy_button(action: String, button: int) -> bool:
+	for e in InputMap.action_get_events(action):
+		if e is InputEventJoypadButton and (e as InputEventJoypadButton).button_index == button:
+			return true
+	return false
+
+func _action_has_joy_axis(action: String, axis: int, value: float) -> bool:
+	for e in InputMap.action_get_events(action):
+		if e is InputEventJoypadMotion:
+			var event := e as InputEventJoypadMotion
+			if event.axis == axis and is_equal_approx(event.axis_value, value):
 				return true
 	return false
 
