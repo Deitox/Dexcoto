@@ -29,6 +29,24 @@ project/assembly_name="Dexcoto"
 
 [input]
 
+ui_cancel={
+"deadzone": 0.5,
+"events": [{
+"device": 0,
+"echo": false,
+"keycode": 4194305,
+"physical_keycode": 4194305,
+"pressed": false,
+"type": "InputEventKey",
+"unicode": 0
+}, {
+"button_index": 7,
+"device": 0,
+"pressed": false,
+"pressure": 0.0,
+"type": "InputEventJoypadButton"
+}]
+}
 ui_left={
 "deadzone": 0.5,
 "events": [{

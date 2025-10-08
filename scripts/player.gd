@@ -163,6 +163,11 @@ func _ensure_default_input_actions() -> void:
 			"buttons": [JOY_BUTTON_DPAD_DOWN],
 			"motions": [{ "axis": JOY_AXIS_LEFT_Y, "value": 1.0 }],
 		},
+		"ui_cancel": {
+			"keys": [Key.KEY_ESCAPE],
+			"buttons": [JOY_BUTTON_START],
+			"motions": [],
+		},
 	}
 	for action in defaults.keys():
 		if not InputMap.has_action(action):
