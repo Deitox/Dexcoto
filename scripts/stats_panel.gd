@@ -2,6 +2,7 @@ extends Control
 
 @onready var _rich: RichTextLabel = $RichText if has_node("RichText") else null
 var _host: VBoxContainer = null
+const SCI_THRESHOLD := 1_000_000.0
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_WHEN_PAUSED
@@ -42,6 +43,33 @@ static func _pct(v: float) -> String:
 static func _deg(v: float) -> String:
 	var deg := char(0x00B0)
 	return "%.1f%s" % [v, deg]
+
+static func _fmt_float(v: float, decimals: int = 2, sci_threshold: float = SCI_THRESHOLD) -> String:
+	if not is_finite(v):
+		return str(v)
+	var abs_v: float = abs(v)
+	var digits: int = max(decimals, 0)
+	if abs_v >= sci_threshold:
+		return _normalize_sci(String.num_scientific(v))
+	return String.num(v, digits)
+
+static func _fmt_int(v: int, sci_threshold: float = SCI_THRESHOLD) -> String:
+	var abs_v: int = abs(v)
+	if float(abs_v) >= sci_threshold:
+		return _normalize_sci(String.num_scientific(float(v)))
+	return String.num_int64(v)
+
+static func _fmt_signed(v: float, decimals: int = 0, sci_threshold: float = SCI_THRESHOLD) -> String:
+	var formatted := _fmt_float(v, decimals, sci_threshold)
+	if v >= 0.0:
+		return "+" + formatted
+	return formatted
+
+static func _normalize_sci(text: String) -> String:
+	var t := text.replace("E", "e")
+	t = t.replace("e+0", "e+")
+	t = t.replace("e-0", "e-")
+	return t
 
 # Tier color helpers for headers (matches main.gd palette)
 static func _tier_hex(t: int) -> String:
@@ -134,8 +162,8 @@ func refresh() -> void:
 	# Core
 	_add_section_header("Core", _tier_hex(1))
 	var core := _add_grid()
-	_add_kv(core, "Health", "%d/%d" % [hp, hp_max])
-	_add_kv(core, "Regen", "%.1f/s" % regen)
+	_add_kv(core, "Health", "%s/%s" % [_fmt_int(hp), _fmt_int(hp_max)])
+	_add_kv(core, "Regen", "%s/s" % _fmt_float(regen, 1))
 	# Move speed with cap color when at cap (3x base)
 	var base_ms: float = float(player.get("base_move_speed")) if player.has_method("get") else move_spd
 	var ms_cap_mult: float = float(player.MAX_MOVE_SPEED_MULT)
@@ -143,7 +171,7 @@ func refresh() -> void:
 	var ms_col: Color = Color.WHITE
 	if move_spd >= ms_cap_speed - 0.01:
 		ms_col = Color("#ff7043")
-	_add_kv(core, "Move Speed", "%.0f px/s" % move_spd, ms_col)
+	_add_kv(core, "Move Speed", "%s px/s" % _fmt_float(move_spd, 0), ms_col)
 	# Defense / Damage taken multiplier
 	var dmg_taken_mult: float = float(player.get("incoming_damage_mult")) if player.has_method("get") else 1.0
 	if abs(dmg_taken_mult - 1.0) > 0.001:
@@ -159,13 +187,13 @@ func refresh() -> void:
 	var extra_cc: float = max(0.0, crit_ch - 1.0)
 	var show_crit: bool = crit_ch > 0.0 or crit_dm > 1.0
 	if show_crit:
-		var cc_text := "%.0f%%" % (min(crit_ch, 1.0) * 100.0)
+		var cc_text := "%s%%" % _fmt_float(min(crit_ch, 1.0) * 100.0, 0)
 		if extra_cc > 0.0:
 			cc_text += " (cap 100%)"
 		_add_kv(off, "Crit Chance", cc_text)
-		var cd_text := "x%.2f" % (crit_dm + extra_cc)
+		var cd_text := "x%s" % _fmt_float(crit_dm + extra_cc, 2)
 		if extra_cc > 0.0:
-			cd_text += " (+%.2f overflow)" % extra_cc
+			cd_text += " (%s overflow)" % _fmt_signed(extra_cc, 2)
 		_add_kv(off, "Crit Damage", cd_text)
 	var as_col: Color = Color.WHITE
 	if atk_mult >= atk_cap:
@@ -173,19 +201,20 @@ func refresh() -> void:
 	elif atk_mult >= atk_cap * 0.9:
 		as_col = Color("#ffb74d")
 	# Split long Attack Speed details into separate aligned rows to avoid clipping
-	_add_kv(off, "Attack Speed", "x%.2f" % atk_mult, as_col)
-	_add_kv(off, "Min Interval", "%.2fs" % min_interval)
+	_add_kv(off, "Attack Speed", "x%s" % _fmt_float(atk_mult, 2), as_col)
+	_add_kv(off, "Min Interval", "%ss" % _fmt_float(min_interval, 2))
 	_add_kv(off, "Spread", _deg(spread_deg))
 
 	# Projectiles
 	_add_section_header("Projectiles", _tier_hex(2))
 	var proj := _add_grid()
 	var proj_col: Color = Color("#ff7043") if proj_bonus >= proj_cap else Color.WHITE
-	_add_kv(proj, "Bonus Projectiles", "+%d (cap +%d)" % [proj_bonus, proj_cap], proj_col)
-	_add_kv(proj, "Projectile Speed", "x%.2f" % proj_speed_mult)
-	_add_kv(proj, "Per-shot cap", "%d" % per_shot_cap)
-	_add_kv(proj, "Global soft cap", "%d" % soft_proj_cap)
-	_add_kv(proj, "Beam threshold", "%.0f px/s" % beam_threshold)
+	var bonus_text := "%s (cap %s)" % [_fmt_signed(proj_bonus, 0), _fmt_signed(proj_cap, 0)]
+	_add_kv(proj, "Bonus Projectiles", bonus_text, proj_col)
+	_add_kv(proj, "Projectile Speed", "x%s" % _fmt_float(proj_speed_mult, 2))
+	_add_kv(proj, "Per-shot cap", "%s" % _fmt_int(per_shot_cap))
+	_add_kv(proj, "Global soft cap", "%s" % _fmt_int(soft_proj_cap))
+	_add_kv(proj, "Beam threshold", "%s px/s" % _fmt_float(beam_threshold, 0))
 
 	# Overflows consolidated
 	if as_overflow_mult > 1.0 or proj_overflow_mult > 1.0 or move_overflow_mult > 1.0 or beam_overflow_mult > 1.0:
@@ -222,7 +251,7 @@ func refresh() -> void:
 		if abs(currency_mult - 1.0) > 0.001:
 			_add_kv(eco, "Currency Gain", "x%.2f (%s)" % [currency_mult, _pct(currency_mult)])
 		if lifesteal > 0:
-			_add_kv(eco, "Lifesteal", "+%d HP/kill" % lifesteal)
+			_add_kv(eco, "Lifesteal", "%s HP/kill" % _fmt_signed(lifesteal, 0))
 	# Finished building
 
 func _connect_visibility_chain() -> void:

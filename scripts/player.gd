@@ -183,15 +183,16 @@ func _ensure_default_input_actions() -> void:
 			var keycode: int = int(key)
 			if not _action_has_physical_key(action, keycode):
 				var ev := InputEventKey.new()
-				ev.physical_keycode = keycode
-				ev.keycode = keycode
+				var key_enum: Key = keycode as Key
+				ev.physical_keycode = key_enum
+				ev.keycode = key_enum
 				InputMap.action_add_event(action, ev)
 		var button_list: Array = cfg.get("buttons", [])
 		for button in button_list:
 			var button_index: int = int(button)
 			if not _action_has_joy_button(action, button_index):
 				var btn_ev := InputEventJoypadButton.new()
-				btn_ev.button_index = button_index
+				btn_ev.button_index = button_index as JoyButton
 				InputMap.action_add_event(action, btn_ev)
 		var motion_list: Array = cfg.get("motions", [])
 		for motion_variant in motion_list:
@@ -202,7 +203,7 @@ func _ensure_default_input_actions() -> void:
 			var value: float = float(motion.get("value", 0.0))
 			if not _action_has_joy_axis(action, axis, value):
 				var motion_ev := InputEventJoypadMotion.new()
-				motion_ev.axis = axis
+				motion_ev.axis = axis as JoyAxis
 				motion_ev.axis_value = value
 				InputMap.action_add_event(action, motion_ev)
 
@@ -215,16 +216,18 @@ func _action_has_physical_key(action: String, key: int) -> bool:
 	return false
 
 func _action_has_joy_button(action: String, button: int) -> bool:
+	var button_enum: JoyButton = button as JoyButton
 	for e in InputMap.action_get_events(action):
-		if e is InputEventJoypadButton and (e as InputEventJoypadButton).button_index == button:
+		if e is InputEventJoypadButton and (e as InputEventJoypadButton).button_index == button_enum:
 			return true
 	return false
 
 func _action_has_joy_axis(action: String, axis: int, value: float) -> bool:
+	var axis_enum: JoyAxis = axis as JoyAxis
 	for e in InputMap.action_get_events(action):
 		if e is InputEventJoypadMotion:
 			var event := e as InputEventJoypadMotion
-			if event.axis == axis and is_equal_approx(event.axis_value, value):
+			if event.axis == axis_enum and is_equal_approx(event.axis_value, value):
 				return true
 	return false
 
