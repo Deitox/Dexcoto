@@ -704,6 +704,10 @@ func _log_guard_event(step_dist: float, expected_step: float, hard_cap: float, d
 	var intermission := false
 	var awaiting_character := false
 	var ui_modal := false
+	var physics_frame: int = Engine.get_physics_frames()
+	var stack_lines: Array[String] = []
+	if not Engine.is_editor_hint():
+		stack_lines = get_stack()
 	if cs != null:
 		# Safely probe scene state flags if present
 		var v1 = null
@@ -763,3 +767,8 @@ func _log_guard_event(step_dist: float, expected_step: float, hard_cap: float, d
 	print("  beams total=", beams_total, " channeling=", beams_channeling, " visible=", beams_visible)
 	if beam_details.size() > 0:
 		print("  beam_details=", beam_details)
+	print("  physics_frame=", physics_frame)
+	if stack_lines.size() > 0:
+		print("  stack:")
+		for s in stack_lines:
+			print("    ", s)
