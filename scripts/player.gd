@@ -168,6 +168,11 @@ func _ensure_default_input_actions() -> void:
 			"buttons": [JOY_BUTTON_START],
 			"motions": [],
 		},
+		"ui_accept": {
+			"keys": [Key.KEY_ENTER, Key.KEY_KP_ENTER, Key.KEY_SPACE],
+			"buttons": [JOY_BUTTON_A],
+			"motions": [],
+		},
 	}
 	for action in defaults.keys():
 		if not InputMap.has_action(action):
