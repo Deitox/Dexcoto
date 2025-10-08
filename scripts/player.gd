@@ -69,6 +69,7 @@ const MAX_MOVE_SPEED_MULT: float = 3.0
 var base_move_speed: float = 0.0
 
 func _ready() -> void:
+	_ensure_default_input_actions()
 	health = max_health
 	bullet_pool = get_tree().get_first_node_in_group("bullet_pool")
 	# Ensure we pick up the pool if its _ready adds the group after ours runs
@@ -139,6 +140,31 @@ func _get_nearest_enemy() -> Node2D:
 			min_d = d
 			nearest = e
 	return nearest
+
+func _ensure_default_input_actions() -> void:
+	var defaults := {
+		"ui_left": [Key.KEY_LEFT, Key.KEY_A],
+		"ui_right": [Key.KEY_RIGHT, Key.KEY_D],
+		"ui_up": [Key.KEY_UP, Key.KEY_W],
+		"ui_down": [Key.KEY_DOWN, Key.KEY_S],
+	}
+	for action in defaults.keys():
+		if not InputMap.has_action(action):
+			InputMap.add_action(action)
+		for key in defaults[action]:
+			if not _action_has_physical_key(action, key):
+				var ev := InputEventKey.new()
+				ev.physical_keycode = key
+				ev.keycode = key
+				InputMap.action_add_event(action, ev)
+
+func _action_has_physical_key(action: String, key: Key) -> bool:
+	for e in InputMap.action_get_events(action):
+		if e is InputEventKey:
+			var event := e as InputEventKey
+			if event.physical_keycode == key or event.keycode == key:
+				return true
+	return false
 
 func _update_weapons_fire(delta: float, target_pos: Vector2) -> void:
 	for i in range(weapons.size()):

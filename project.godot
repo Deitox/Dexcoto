@@ -27,6 +27,89 @@ window/size/viewport_height=1080
 
 project/assembly_name="Dexcoto"
 
+[input]
+
+ui_left={
+"deadzone": 0.5,
+"events": [{
+"device": 0,
+"echo": false,
+"keycode": 4194319,
+"physical_keycode": 4194319,
+"pressed": false,
+"type": "InputEventKey",
+"unicode": 0
+}, {
+"device": 0,
+"echo": false,
+"keycode": 65,
+"physical_keycode": 65,
+"pressed": false,
+"type": "InputEventKey",
+"unicode": 0
+}]
+}
+ui_right={
+"deadzone": 0.5,
+"events": [{
+"device": 0,
+"echo": false,
+"keycode": 4194321,
+"physical_keycode": 4194321,
+"pressed": false,
+"type": "InputEventKey",
+"unicode": 0
+}, {
+"device": 0,
+"echo": false,
+"keycode": 68,
+"physical_keycode": 68,
+"pressed": false,
+"type": "InputEventKey",
+"unicode": 0
+}]
+}
+ui_up={
+"deadzone": 0.5,
+"events": [{
+"device": 0,
+"echo": false,
+"keycode": 4194320,
+"physical_keycode": 4194320,
+"pressed": false,
+"type": "InputEventKey",
+"unicode": 0
+}, {
+"device": 0,
+"echo": false,
+"keycode": 87,
+"physical_keycode": 87,
+"pressed": false,
+"type": "InputEventKey",
+"unicode": 0
+}]
+}
+ui_down={
+"deadzone": 0.5,
+"events": [{
+"device": 0,
+"echo": false,
+"keycode": 4194322,
+"physical_keycode": 4194322,
+"pressed": false,
+"type": "InputEventKey",
+"unicode": 0
+}, {
+"device": 0,
+"echo": false,
+"keycode": 83,
+"physical_keycode": 83,
+"pressed": false,
+"type": "InputEventKey",
+"unicode": 0
+}]
+}
+
 [rendering]
 
 renderer/rendering_method="mobile"
