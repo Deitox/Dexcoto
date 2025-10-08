@@ -44,19 +44,24 @@ static func _deg(v: float) -> String:
 	var deg := char(0x00B0)
 	return "%.1f%s" % [v, deg]
 
+static func _fmt_scientific(v: float, digits: int) -> String:
+	var prec: int = max(digits, 0)
+	var fmt: String = "%." + str(prec) + "e"
+	return _normalize_sci(fmt % v)
+
 static func _fmt_float(v: float, decimals: int = 2, sci_threshold: float = SCI_THRESHOLD) -> String:
 	if not is_finite(v):
 		return str(v)
 	var abs_v: float = abs(v)
 	var digits: int = max(decimals, 0)
 	if abs_v >= sci_threshold:
-		return _normalize_sci(String.num_scientific(v))
+		return _fmt_scientific(v, max(digits, 2))
 	return String.num(v, digits)
 
 static func _fmt_int(v: int, sci_threshold: float = SCI_THRESHOLD) -> String:
 	var abs_v: int = abs(v)
 	if float(abs_v) >= sci_threshold:
-		return _normalize_sci(String.num_scientific(float(v)))
+		return _fmt_scientific(float(v), 2)
 	return String.num_int64(v)
 
 static func _fmt_signed(v: float, decimals: int = 0, sci_threshold: float = SCI_THRESHOLD) -> String:
@@ -175,12 +180,12 @@ func refresh() -> void:
 	# Defense / Damage taken multiplier
 	var dmg_taken_mult: float = float(player.get("incoming_damage_mult")) if player.has_method("get") else 1.0
 	if abs(dmg_taken_mult - 1.0) > 0.001:
-		_add_kv(core, "Damage Taken", "x%.2f (%s)" % [dmg_taken_mult, _pct(dmg_taken_mult)])
+		_add_kv(core, "Damage Taken", "x%s" % _fmt_float(dmg_taken_mult, 2))
 
 	# Offense
 	_add_section_header("Offense", _tier_hex(3))
 	var off := _add_grid()
-	_add_kv(off, "Damage", "x%.2f (%s)" % [dmg_mult, _pct(dmg_mult)])
+	_add_kv(off, "Damage", "x%s" % _fmt_float(dmg_mult, 2))
 	# Crit stats
 	var crit_ch: float = float(player.get("crit_chance")) if player.has_method("get") else 0.0
 	var crit_dm: float = float(player.get("crit_damage_mult")) if player.has_method("get") else 1.5
@@ -238,18 +243,18 @@ func refresh() -> void:
 		_add_section_header("Powers", _tier_hex(4))
 		var pwr := _add_grid()
 		if show_elem:
-			_add_kv(pwr, "Elemental Power", "x%.2f (%s)" % [elemental_power, _pct(elemental_power)])
+			_add_kv(pwr, "Elemental Power", "x%s" % _fmt_float(elemental_power, 2))
 		if show_expl:
-			_add_kv(pwr, "Explosive Power", "x%.2f (%s)" % [explosive_power, _pct(explosive_power)])
+			_add_kv(pwr, "Explosive Power", "x%s" % _fmt_float(explosive_power, 2))
 		if show_turret:
-			_add_kv(pwr, "Turret Power", "x%.2f (%s)" % [turret_power, _pct(turret_power)])
+			_add_kv(pwr, "Turret Power", "x%s" % _fmt_float(turret_power, 2))
 
 	# Economy
 	if abs(currency_mult - 1.0) > 0.001 or lifesteal > 0:
 		_add_section_header("Economy", _tier_hex(5))
 		var eco := _add_grid()
 		if abs(currency_mult - 1.0) > 0.001:
-			_add_kv(eco, "Currency Gain", "x%.2f (%s)" % [currency_mult, _pct(currency_mult)])
+			_add_kv(eco, "Currency Gain", "x%s" % _fmt_float(currency_mult, 2))
 		if lifesteal > 0:
 			_add_kv(eco, "Lifesteal", "%s HP/kill" % _fmt_signed(lifesteal, 0))
 	# Finished building
