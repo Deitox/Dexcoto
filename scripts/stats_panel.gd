@@ -192,10 +192,14 @@ func refresh() -> void:
 	var extra_cc: float = max(0.0, crit_ch - 1.0)
 	var show_crit: bool = crit_ch > 0.0 or crit_dm > 1.0
 	if show_crit:
-		var cc_text := "%s%%" % _fmt_float(min(crit_ch, 1.0) * 100.0, 0)
-		if extra_cc > 0.0:
-			cc_text += " (cap 100%)"
-		_add_kv(off, "Crit Chance", cc_text)
+		var cc_val := min(crit_ch, 1.0)
+		var cc_text := "%s%%" % _fmt_float(cc_val * 100.0, 0)
+		var cc_color := Color.WHITE
+		if crit_ch >= 1.0:
+			cc_color = Color("#ff7043")
+		elif crit_ch >= 0.9:
+			cc_color = Color("#ffb74d")
+		_add_kv(off, "Crit Chance", cc_text, cc_color)
 		var cd_text := "x%s" % _fmt_float(crit_dm + extra_cc, 2)
 		if extra_cc > 0.0:
 			cd_text += " (%s overflow)" % _fmt_signed(extra_cc, 2)
@@ -214,8 +218,7 @@ func refresh() -> void:
 	_add_section_header("Projectiles", _tier_hex(2))
 	var proj := _add_grid()
 	var proj_col: Color = Color("#ff7043") if proj_bonus >= proj_cap else Color.WHITE
-	var bonus_text := "%s (cap %s)" % [_fmt_signed(proj_bonus, 0), _fmt_signed(proj_cap, 0)]
-	_add_kv(proj, "Bonus Projectiles", bonus_text, proj_col)
+	_add_kv(proj, "Bonus Projectiles", "%s" % _fmt_signed(proj_bonus, 0), proj_col)
 	_add_kv(proj, "Projectile Speed", "x%s" % _fmt_float(proj_speed_mult, 2))
 	_add_kv(proj, "Per-shot cap", "%s" % _fmt_int(per_shot_cap))
 	_add_kv(proj, "Global soft cap", "%s" % _fmt_int(soft_proj_cap))
