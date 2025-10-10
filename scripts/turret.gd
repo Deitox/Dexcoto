@@ -14,9 +14,13 @@ var active: bool = true
 var pool: Node = null
 var turret_role: String = "attack"
 var heal_amount: int = 6
+var healing_aura: Line2D = null
+var aura_time: float = 0.0
 
 # Performance caps
 const MIN_TURRET_INTERVAL: float = 0.12
+const HEALING_AURA_RADIUS: float = 20.0
+const HEALING_AURA_SEGMENTS: int = 32
 
 func _color_for_tier(t: int) -> Color:
 	match t:
@@ -88,6 +92,8 @@ func _physics_process(delta: float) -> void:
 	if not active:
 		return
 	if turret_role == "healing":
+		aura_time += delta
+		_update_healing_aura()
 		_cd -= delta
 		if _cd <= 0.0:
 			var healed := _heal_player()
@@ -200,6 +206,54 @@ func _emit_heal_fx(amount: int) -> void:
 	tw.tween_property(label, "modulate:a", 0.0, 0.2)
 	tw.tween_callback(label.queue_free)
 
+	var ring := Line2D.new()
+	ring.width = 4.0
+	ring.default_color = Color(0.5, 1.0, 0.8, 0.6)
+	var pts := PackedVector2Array()
+	for i in range(HEALING_AURA_SEGMENTS + 1):
+		var angle := TAU * float(i) / float(HEALING_AURA_SEGMENTS)
+		pts.append(Vector2(cos(angle), sin(angle)) * (HEALING_AURA_RADIUS * 0.8))
+	ring.points = pts
+	add_child(ring)
+	ring.z_index = -1
+	ring.modulate = Color(1, 1, 1, 0.6)
+	ring.scale = Vector2.ONE
+	var tw_ring := ring.create_tween()
+	tw_ring.tween_property(ring, "scale", Vector2(1.6, 1.6), 0.35).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tw_ring.parallel().tween_property(ring, "modulate:a", 0.0, 0.35)
+	tw_ring.tween_callback(ring.queue_free)
+
+func _ensure_healing_aura() -> void:
+	if healing_aura != null and is_instance_valid(healing_aura):
+		healing_aura.visible = true
+		return
+	healing_aura = Line2D.new()
+	healing_aura.width = 3.0
+	healing_aura.default_color = Color(0.4, 1.0, 0.8, 0.6)
+	var pts := PackedVector2Array()
+	for i in range(HEALING_AURA_SEGMENTS + 1):
+		var angle := TAU * float(i) / float(HEALING_AURA_SEGMENTS)
+		pts.append(Vector2(cos(angle), sin(angle)) * HEALING_AURA_RADIUS)
+	healing_aura.points = pts
+	healing_aura.z_index = -1
+	healing_aura.modulate = Color(1, 1, 1, 0.5)
+	add_child(healing_aura)
+
+func _hide_healing_aura() -> void:
+	if healing_aura != null and is_instance_valid(healing_aura):
+		healing_aura.visible = false
+	aura_time = 0.0
+
+func _update_healing_aura() -> void:
+	if healing_aura == null or not is_instance_valid(healing_aura):
+		return
+	var pulse_scale: float = 1.0 + 0.08 * sin(aura_time * 4.0)
+	var alpha: float = 0.3 + 0.15 * (0.5 + 0.5 * sin(aura_time * 3.0))
+	healing_aura.scale = Vector2(pulse_scale, pulse_scale)
+	var col := healing_aura.modulate
+	col.a = clamp(alpha, 0.0, 1.0)
+	healing_aura.modulate = col
+
 func activate(pos: Vector2, t: int, p: Node, mode := "attack") -> void:
 	turret_role = String(mode)
 	global_position = pos
@@ -210,9 +264,12 @@ func activate(pos: Vector2, t: int, p: Node, mode := "attack") -> void:
 	if turret_role == "healing":
 		if not is_in_group("healing_turrets"):
 			add_to_group("healing_turrets")
+		_ensure_healing_aura()
+		aura_time = 0.0
 	else:
 		if is_in_group("healing_turrets"):
 			remove_from_group("healing_turrets")
+		_hide_healing_aura()
 	set_tier(t)
 	_cd = 0.0
 	visible = true
@@ -227,4 +284,5 @@ func deactivate() -> void:
 	turret_role = "attack"
 	heal_amount = 6
 	_cd = 0.0
+	_hide_healing_aura()
 	pool = null

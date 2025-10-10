@@ -749,7 +749,7 @@ func _log_guard_event(step_dist: float, expected_step: float, hard_cap: float, d
 	var awaiting_character := false
 	var ui_modal := false
 	var physics_frame: int = Engine.get_physics_frames()
-	var stack_lines: Array[String] = []
+	var stack_lines: Array = []
 	if not Engine.is_editor_hint():
 		stack_lines = get_stack()
 	if cs != null:
@@ -815,4 +815,4 @@ func _log_guard_event(step_dist: float, expected_step: float, hard_cap: float, d
 	if stack_lines.size() > 0:
 		print("  stack:")
 		for s in stack_lines:
-			print("    ", s)
+			print("    ", str(s))
