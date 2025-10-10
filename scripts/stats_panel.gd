@@ -143,6 +143,7 @@ func refresh() -> void:
 	var as_overflow_mult: float = float(player.get("overflow_damage_mult_from_attack_speed")) if player.has_method("get") else 1.0
 	var proj_overflow_mult: float = float(player.get("overflow_damage_mult_from_projectiles")) if player.has_method("get") else 1.0
 	var move_overflow_mult: float = float(player.get("overflow_currency_mult_from_move_speed")) if player.has_method("get") else 1.0
+	var def_overflow_mult: float = float(player.get("overflow_healing_mult_from_defense")) if player.has_method("get") else 1.0
 
 	# Beam conversion overflow from projectile speed (estimate using fastest equipped weapon)
 	var beam_overflow_mult: float = 1.0
@@ -192,7 +193,7 @@ func refresh() -> void:
 	var extra_cc: float = max(0.0, crit_ch - 1.0)
 	var show_crit: bool = crit_ch > 0.0 or crit_dm > 1.0
 	if show_crit:
-		var cc_val := min(crit_ch, 1.0)
+		var cc_val: float = min(crit_ch, 1.0)
 		var cc_text := "%s%%" % _fmt_float(cc_val * 100.0, 0)
 		var cc_color := Color.WHITE
 		if crit_ch >= 1.0:
@@ -225,7 +226,7 @@ func refresh() -> void:
 	_add_kv(proj, "Beam threshold", "%s px/s" % _fmt_float(beam_threshold, 0))
 
 	# Overflows consolidated
-	if as_overflow_mult > 1.0 or proj_overflow_mult > 1.0 or move_overflow_mult > 1.0 or beam_overflow_mult > 1.0:
+	if as_overflow_mult > 1.0 or proj_overflow_mult > 1.0 or move_overflow_mult > 1.0 or beam_overflow_mult > 1.0 or def_overflow_mult > 1.0:
 		_add_section_header("Overflows", _tier_hex(5))
 		var ov := _add_grid()
 		if as_overflow_mult > 1.0:
@@ -236,6 +237,8 @@ func refresh() -> void:
 			_add_kv(ov, "Move Speed -> Currency", _pct(move_overflow_mult), Color("#66bb6a"))
 		if beam_overflow_mult > 1.0:
 			_add_kv(ov, "Proj Speed -> Beam Dmg", _pct(beam_overflow_mult), Color("#66bb6a"))
+		if def_overflow_mult > 1.0:
+			_add_kv(ov, "Defense -> Healing", _pct(def_overflow_mult), Color("#66bb6a"))
 
 	# Powers
 	var show_elem: bool = abs(elemental_power - 1.0) > 0.001

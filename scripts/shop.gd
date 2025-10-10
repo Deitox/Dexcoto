@@ -108,7 +108,7 @@ const WEAPONS: Array[Dictionary] = [
 		 "stack": {"type":"crit_chance","per_stack":0.02,"base_kills":6}},
 		# New: Defense-stacking weapon
 		{"kind":"weapon","id":"guardian","name":"Guardian","cost":18,"rarity":"Rare",
-		 "desc":"Kills grant +2% Defense per stack.",
+		 "desc":"Kills grant +2% Defense. Overflow spawns healing turrets.",
 		 "fire_interval":0.42, "damage":10, "speed":520, "projectiles":1, "color": Color(0.6,0.9,0.8),
 		 "stack": {"type":"defense","per_stack":0.02,"base_kills":6}},
 ]

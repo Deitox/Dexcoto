@@ -12,6 +12,8 @@ var _cd: float = 0.0
 @onready var bullet_pool: Node = null
 var active: bool = true
 var pool: Node = null
+var turret_role: String = "attack"
+var heal_amount: int = 6
 
 # Performance caps
 const MIN_TURRET_INTERVAL: float = 0.12
@@ -69,16 +71,30 @@ func _apply_tier() -> void:
 	damage = dmg
 	speed = proj_speed
 	attack_range = rng
+	if turret_role == "healing":
+		heal_amount = max(2, int(round(float(dmg) * 0.6)))
 	# Make turret slightly larger per tier
 	var s: float = 1.0 + 0.1 * float(t - 1)
 	scale = Vector2(s, s)
 	# Color by tier
 	var poly: Polygon2D = $Polygon2D if has_node("Polygon2D") else null
 	if poly:
-		poly.color = _color_for_tier(t)
+		if turret_role == "healing":
+			poly.color = Color(0.5, 1.0, 0.8)
+		else:
+			poly.color = _color_for_tier(t)
 
 func _physics_process(delta: float) -> void:
 	if not active:
+		return
+	if turret_role == "healing":
+		_cd -= delta
+		if _cd <= 0.0:
+			var healed := _heal_player()
+			if healed:
+				_cd = max(MIN_TURRET_INTERVAL, fire_interval)
+			else:
+				_cd = max(MIN_TURRET_INTERVAL, fire_interval * 0.5)
 		return
 	_cd -= delta
 	if _cd <= 0.0:
@@ -108,6 +124,8 @@ func _get_nearest_enemy_in_range() -> Node2D:
 	return nearest
 
 func _shoot(pos: Vector2) -> void:
+	if turret_role == "healing":
+		return
 	var dir: Vector2 = (pos - global_position).normalized()
 	# Projectiles overload control
 	var current: int = get_tree().get_nodes_in_group("projectiles").size()
@@ -145,13 +163,58 @@ func _shoot(pos: Vector2) -> void:
 			b.damage = dmg
 			b.color = color
 
-func activate(pos: Vector2, t: int, p: Node) -> void:
+func _heal_player() -> bool:
+	var player = get_tree().get_first_node_in_group("player")
+	if player == null or not player.has_method("heal"):
+		return false
+	var heal_mult: float = 1.0
+	if player.has_method("get"):
+		var overflow_v = player.get("overflow_healing_mult_from_defense")
+		if overflow_v != null:
+			heal_mult *= max(0.1, float(overflow_v))
+		var turret_power_v = player.get("turret_power_mult")
+		if turret_power_v != null:
+			heal_mult *= max(0.1, float(turret_power_v))
+	var amount: int = int(round(float(heal_amount) * heal_mult))
+	if amount <= 0:
+		return false
+	var actual: int = int(player.call("heal", amount))
+	if actual <= 0:
+		return false
+	_emit_heal_fx(actual)
+	return true
+
+func _emit_heal_fx(amount: int) -> void:
+	var label := Label.new()
+	label.text = "+%d" % amount
+	label.add_theme_color_override("font_color", Color(0.5, 1.0, 0.8))
+	label.modulate = Color(1, 1, 1, 0.0)
+	var scene := get_tree().current_scene
+	if scene == null:
+		return
+	scene.add_child(label)
+	label.global_position = global_position + Vector2(0, -18)
+	var tw := label.create_tween()
+	tw.tween_property(label, "modulate:a", 1.0, 0.1)
+	tw.parallel().tween_property(label, "position:y", label.position.y - 16.0, 0.3)
+	tw.tween_property(label, "modulate:a", 0.0, 0.2)
+	tw.tween_callback(label.queue_free)
+
+func activate(pos: Vector2, t: int, p: Node, mode := "attack") -> void:
+	turret_role = String(mode)
 	global_position = pos
-	set_tier(t)
 	pool = p
 	active = true
 	if not is_in_group("turrets"):
 		add_to_group("turrets")
+	if turret_role == "healing":
+		if not is_in_group("healing_turrets"):
+			add_to_group("healing_turrets")
+	else:
+		if is_in_group("healing_turrets"):
+			remove_from_group("healing_turrets")
+	set_tier(t)
+	_cd = 0.0
 	visible = true
 
 func deactivate() -> void:
@@ -159,3 +222,9 @@ func deactivate() -> void:
 	visible = false
 	if is_in_group("turrets"):
 		remove_from_group("turrets")
+	if is_in_group("healing_turrets"):
+		remove_from_group("healing_turrets")
+	turret_role = "attack"
+	heal_amount = 6
+	_cd = 0.0
+	pool = null

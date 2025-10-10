@@ -42,6 +42,7 @@ var item_counts: Dictionary = {}
 var overflow_damage_mult_from_attack_speed: float = 1.0
 var overflow_damage_mult_from_projectiles: float = 1.0
 var overflow_currency_mult_from_move_speed: float = 1.0
+var overflow_healing_mult_from_defense: float = 1.0
 
 # Debug/guard against rare teleport glitches
 var _last_pos: Vector2 = Vector2.ZERO
@@ -65,6 +66,7 @@ const MAX_PROJECTILE_BONUS: int = 10 # cap on player.projectiles_per_shot
 const MAX_ATTACK_SPEED_MULT: float = 4.0
 const MIN_WEAPON_INTERVAL: float = 0.08
 const MAX_MOVE_SPEED_MULT: float = 3.0
+const MIN_INCOMING_DAMAGE_MULT: float = 0.20
 
 var base_move_speed: float = 0.0
 
@@ -89,10 +91,10 @@ func _physics_process(delta: float) -> void:
 	# Regen
 	if regen_per_second > 0.0 and health > 0 and health < max_health:
 		_regen_accum += regen_per_second * delta
-		var heal: int = int(_regen_accum)
-		if heal > 0:
-			_regen_accum -= float(heal)
-			health = clamp(health + heal, 0, max_health)
+		var heal_amount: int = int(_regen_accum)
+		if heal_amount > 0:
+			_regen_accum -= float(heal_amount)
+			health = clamp(health + heal_amount, 0, max_health)
 
 	var input_dir: Vector2 = Vector2.ZERO
 	if input_enabled:
@@ -349,6 +351,13 @@ func take_damage(amount: int) -> void:
 		health = 0
 		emit_signal("died")
 
+func heal(amount: int) -> int:
+	if amount <= 0 or health <= 0:
+		return 0
+	var before: int = health
+	health = min(max_health, health + amount)
+	return health - before
+
 # Compute final damage after rolling crits.
 # - Crit chance is capped at 100% for the roll; overflow above 1.0 increases crit damage multiplier additively.
 # - Returns an int scaled from base_damage.
@@ -392,7 +401,7 @@ func apply_upgrade(upg: Dictionary) -> void:
 			# Reduce incoming damage by value (e.g., 0.10 => 10% less damage taken)
 			incoming_damage_mult *= max(0.0, 1.0 - float(v))
 			# Soft floor to avoid trivializing damage
-			incoming_damage_mult = max(0.20, incoming_damage_mult)
+			incoming_damage_mult = max(MIN_INCOMING_DAMAGE_MULT, incoming_damage_mult)
 		"projectiles":
 			var add: int = int(v)
 			for i in range(add):
@@ -602,11 +611,13 @@ func on_enemy_killed(source: Dictionary) -> void:
 	var cur: int = int(_kill_counters.get(wid, 0)) + 1
 	if cur >= need:
 		_kill_counters[wid] = 0
-		_apply_stack_effect(String(sconf.get("type","")), sconf)
+		_apply_stack_effect(String(sconf.get("type","")), sconf, picked)
 	else:
 		_kill_counters[wid] = cur
 
-func _apply_stack_effect(stype: String, conf: Dictionary) -> void:
+func _apply_stack_effect(stype: String, conf: Dictionary, source_weapon: Dictionary = {}) -> void:
+	var weapon_id: String = String(source_weapon.get("id", ""))
+	var weapon_tier: int = int(source_weapon.get("tier", 1))
 	match stype:
 		"damage":
 			var inc: float = float(conf.get("per_stack", 0.02))
@@ -635,9 +646,15 @@ func _apply_stack_effect(stype: String, conf: Dictionary) -> void:
 			_show_stack_cue("+%d%% Crit Chance" % int(round(inc3*100.0)), Color(1.0,0.8,0.2))
 		"defense":
 			var inc4: float = float(conf.get("per_stack", 0.02))
-			incoming_damage_mult *= max(0.0, 1.0 - inc4)
-			incoming_damage_mult = max(0.20, incoming_damage_mult)
-			_show_stack_cue("-%d%% Damage Taken" % int(round(inc4*100.0)), Color(0.8,1.0,0.8))
+			var before: float = incoming_damage_mult
+			var mult: float = max(0.0, 1.0 - inc4)
+			var desired: float = before * mult
+			if desired < MIN_INCOMING_DAMAGE_MULT:
+				incoming_damage_mult = MIN_INCOMING_DAMAGE_MULT
+				_handle_defense_overflow(conf, weapon_id, weapon_tier)
+			else:
+				incoming_damage_mult = desired
+				_show_stack_cue("-%d%% Damage Taken" % int(round(inc4 * 100.0)), Color(0.8, 1.0, 0.8))
 		"turret_spawn":
 			# Spawn a turret immediately near the player (not queued for next wave).
 			var pos := global_position + Vector2(randf_range(-80,80), randf_range(-80,80))
@@ -657,6 +674,33 @@ func _apply_stack_effect(stype: String, conf: Dictionary) -> void:
 			_show_stack_cue("+Turret", Color(0.7,1.0,0.3))
 		_:
 			pass
+
+func _handle_defense_overflow(conf: Dictionary, weapon_id: String, weapon_tier: int) -> void:
+	var overflow_gain: float = max(0.0, float(conf.get("per_stack", 0.02)))
+	overflow_healing_mult_from_defense *= (1.0 + overflow_gain)
+	if weapon_id == "guardian":
+		_spawn_guardian_healing_turret(max(1, weapon_tier))
+	else:
+		_show_stack_cue("+%d%% Healing Power" % int(round(overflow_gain * 100.0)), Color(0.6, 1.0, 0.9))
+
+func _spawn_guardian_healing_turret(tier: int) -> void:
+	var pos := global_position + Vector2(randf_range(-80, 80), randf_range(-80, 80))
+	var spawned := false
+	var main := get_tree().current_scene
+	if main and main.has_method("_spawn_turret_at_with_tier"):
+		main.call("_spawn_turret_at_with_tier", pos, max(1, tier), "healing")
+		spawned = true
+	elif main and main.has_method("_spawn_turret_at"):
+		# Fallback: spawn default turret and immediately convert via pool if possible
+		main.call("_spawn_turret_at", pos, "healing")
+		spawned = true
+	else:
+		var tp = get_tree().get_first_node_in_group("turret_pool")
+		if tp and tp.has_method("spawn_turret"):
+			tp.call("spawn_turret", pos, max(1, tier), "healing")
+			spawned = true
+	if spawned:
+		_show_stack_cue("+Healing Turret", Color(0.6, 1.0, 0.9))
 
 func _show_stack_cue(msg: String, col: Color) -> void:
 	# Simple ring cue above the player

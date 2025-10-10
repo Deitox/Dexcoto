@@ -1030,17 +1030,33 @@ func _balance_turrets() -> void:
 	var by_tier := {}
 	for t in all:
 		var ti := int(t.get("tier")) if t.has_method("get") else 1
-		if not by_tier.has(ti):
-			by_tier[ti] = []
-		by_tier[ti].append(t)
+		var role := "attack"
+		if t.has_method("get"):
+			var maybe_role = t.get("turret_role")
+			if maybe_role != null:
+				role = String(maybe_role)
+		var key := "%s|%d" % [role, ti]
+		if not by_tier.has(key):
+			by_tier[key] = {
+				"tier": ti,
+				"role": role,
+				"nodes": [],
+			}
+		var entry: Dictionary = by_tier[key]
+		var arr: Array = entry["nodes"]
+		arr.append(t)
+		entry["nodes"] = arr
+		by_tier[key] = entry
 	var changed := true
 	while total > max_allowed and changed:
 		changed = false
-		for tier in by_tier.keys():
-			var arr: Array = by_tier[tier]
+		for key in by_tier.keys():
+			var entry: Dictionary = by_tier[key]
+			var arr: Array = entry["nodes"]
 			# purge freed nodes
 			arr = arr.filter(func(n): return is_instance_valid(n))
-			by_tier[tier] = arr
+			entry["nodes"] = arr
+			by_tier[key] = entry
 			while arr.size() >= 3 and total > max_allowed:
 				# take three, remove them, spawn one upgraded
 				var to_merge: Array = [arr.pop_back(), arr.pop_back(), arr.pop_back()]
@@ -1052,24 +1068,29 @@ func _balance_turrets() -> void:
 							n.queue_free()
 				total -= 2 # 3 -> 1 reduces by 2
 				var pos := player.global_position + Vector2(randf_range(-80,80), randf_range(-80,80))
-				_spawn_turret_at_with_tier(pos, int(tier) + 1)
-				_notify("Turrets merged to T%d" % (int(tier) + 1), Color(0.8, 0.9, 1.0))
+				var tier_val: int = int(entry.get("tier", 1))
+				var role := String(entry.get("role", "attack"))
+				_spawn_turret_at_with_tier(pos, tier_val + 1, role)
+				var label := "Turrets"
+				if role == "healing":
+					label = "Healing turrets"
+				_notify("%s merged to T%d" % [label, tier_val + 1], Color(0.8, 0.9, 1.0))
 				changed = true
 			if total <= max_allowed:
 				break
 		if not changed:
 			break
 
-func _spawn_turret_at_with_tier(pos: Vector2, tier: int) -> void:
+func _spawn_turret_at_with_tier(pos: Vector2, tier: int, mode: String = "attack") -> void:
 	if TURRET_SCENE == null:
 		return
 	if turret_pool and turret_pool.has_method("spawn_turret"):
-		turret_pool.call("spawn_turret", pos, tier)
+		turret_pool.call("spawn_turret", pos, tier, mode)
 	else:
 		var t = TURRET_SCENE.instantiate()
 		add_child(t)
 		if t.has_method("activate"):
-			t.call("activate", pos, tier, null)
+			t.call("activate", pos, tier, null, mode)
 		else:
 			t.global_position = pos
 			if t.has_method("set_tier"):
@@ -1179,14 +1200,5 @@ func _spawn_pending_turrets() -> void:
 		_spawn_turret_at(player.global_position + Vector2(randf_range(-80,80), randf_range(-80,80)))
 	pending_turrets = 0
 
-func _spawn_turret_at(pos: Vector2) -> void:
-	if TURRET_SCENE == null:
-		return
-	var t = TURRET_SCENE.instantiate()
-	add_child(t)
-	if t.has_method("activate"):
-		t.call("activate", pos, 1, null)
-	else:
-		t.global_position = pos
-		if t.has_method("add_to_group"):
-			t.add_to_group("turrets")
+func _spawn_turret_at(pos: Vector2, mode: String = "attack") -> void:
+	_spawn_turret_at_with_tier(pos, 1, mode)
