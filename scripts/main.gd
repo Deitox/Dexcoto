@@ -1024,11 +1024,14 @@ func _start_next_wave() -> void:
 
 # Compute wave duration in seconds, increasing with wave and capped.
 func _compute_wave_duration(w: int) -> float:
-	var base: float = 20.0
-	# Slightly reduced per-wave bonus time; still capped to 90s
-	var growth_per_wave: float = 4.0
-	var grown := base + growth_per_wave * float(max(0, w - 1))
-	return min(90.0, grown)
+	var wave_index: int = max(1, w)
+	var base_duration: float = 20.0 + 5.0 * float(max(0, wave_index - 1))
+	var base_cap: float = 90.0
+	var cap_bonus_steps: int = 0
+	if wave_index > 20:
+		cap_bonus_steps = int(floor(float(wave_index - 20) / 10.0))
+	var dynamic_cap: float = base_cap + 10.0 * float(cap_bonus_steps)
+	return min(dynamic_cap, base_duration)
 
 func _spawn_boss_for_wave() -> void:
 	if BOSS_SCENE == null:
