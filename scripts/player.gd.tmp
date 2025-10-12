@@ -43,15 +43,6 @@ var overflow_damage_mult_from_attack_speed: float = 1.0
 var overflow_damage_mult_from_projectiles: float = 1.0
 var overflow_currency_mult_from_move_speed: float = 1.0
 var overflow_healing_mult_from_defense: float = 1.0
-var heartforge_damage_bonus_applied: float = 1.0
-var heartforge_attack_bonus_applied: float = 1.0
-var titan_barrier: int = 0
-var titan_barrier_max: int = 0
-var hemorrhage_lifesteal_gain_per_kill: int = 0
-var hemorrhage_shockwave_damage: int = 0
-var hemorrhage_shockwave_radius: float = 0.0
-var _hemorrhage_shockwave_triggers: int = 0
-var _hemorrhage_shockwave_processing: bool = false
 
 # Debug/guard against rare teleport glitches
 var _last_pos: Vector2 = Vector2.ZERO
@@ -76,9 +67,6 @@ const MAX_ATTACK_SPEED_MULT: float = 4.0
 const MIN_WEAPON_INTERVAL: float = 0.08
 const MAX_MOVE_SPEED_MULT: float = 3.0
 const MIN_INCOMING_DAMAGE_MULT: float = 0.20
-const TITAN_WARD_BARRIER_RATIO: float = 0.15
-const HEMORRHAGE_SHOCKWAVE_BASE_RADIUS: float = 160.0
-const HEMORRHAGE_SHOCKWAVE_DURATION: float = 0.35
 
 var base_move_speed: float = 0.0
 
@@ -96,7 +84,6 @@ func _ready() -> void:
 	base_move_speed = move_speed
 	set_notify_transform(true)
 	_last_transform_position = global_position
-	notify_max_health_changed()
 
 func set_position_and_reset_guard(pos: Vector2) -> void:
 	# Public helper to intentionally reposition the player without triggering the anti-teleport guard.
@@ -110,12 +97,12 @@ func set_position_and_reset_guard(pos: Vector2) -> void:
 
 func _physics_process(delta: float) -> void:
 	# Regen
-	if regen_per_second > 0.0 and health > 0:
+	if regen_per_second > 0.0 and health > 0 and health < max_health:
 		_regen_accum += regen_per_second * delta
 		var heal_amount: int = int(_regen_accum)
 		if heal_amount > 0:
 			_regen_accum -= float(heal_amount)
-			heal(heal_amount)
+			health = clamp(health + heal_amount, 0, max_health)
 
 	var input_dir: Vector2 = Vector2.ZERO
 	if input_enabled:
@@ -371,12 +358,7 @@ func _fire_weapon_at(w: Dictionary, pos: Vector2) -> void:
 					b2.color = color
 
 func take_damage(amount: int) -> void:
-	if amount <= 0 or health <= 0:
-		return
 	var final: int = int(max(1, round(float(amount) * max(0.05, incoming_damage_mult))))
-	final = _apply_titan_ward_barrier_to_damage(final)
-	if final <= 0:
-		return
 	health -= final
 	if health <= 0:
 		health = 0
@@ -385,154 +367,12 @@ func take_damage(amount: int) -> void:
 func heal(amount: int) -> int:
 	if amount <= 0 or health <= 0:
 		return 0
-	var missing: int = max(0, max_health - health)
-	var healed: int = min(missing, amount)
-	if healed > 0:
-		health += healed
-	var overflow: int = amount - healed
-	if overflow > 0:
-		_titan_ward_convert_overheal(overflow)
-	return healed
-
-func notify_max_health_changed() -> void:
-	_on_max_health_changed()
-
-func _on_max_health_changed() -> void:
-	health = min(health, max_health)
-	_recalc_heartforge_core_bonus()
-	_update_titan_ward_barrier_cap()
-	_recalc_hemorrhage_engine_values()
-
-func _recalc_heartforge_core_bonus() -> void:
-	if heartforge_damage_bonus_applied != 1.0:
-		damage_mult /= heartforge_damage_bonus_applied
-	if heartforge_attack_bonus_applied != 1.0:
-		attack_speed_mult /= heartforge_attack_bonus_applied
-	heartforge_damage_bonus_applied = 1.0
-	heartforge_attack_bonus_applied = 1.0
-	var count: int = get_item_count("heartforge_core")
-	if count <= 0:
-		return
-	var stacks: int = int(floor(float(max_health) / 25.0))
-	if stacks <= 0:
-		return
-	var dmg_bonus: float = pow(1.0 + 0.03 * float(count), float(stacks))
-	var atk_bonus: float = pow(1.0 + 0.01 * float(count), float(stacks))
-	heartforge_damage_bonus_applied = max(0.0001, dmg_bonus)
-	heartforge_attack_bonus_applied = max(0.0001, atk_bonus)
-	damage_mult *= heartforge_damage_bonus_applied
-	attack_speed_mult *= heartforge_attack_bonus_applied
-
-func _update_titan_ward_barrier_cap() -> void:
-	var count: int = get_item_count("titan_ward")
-	if count <= 0:
-		titan_barrier_max = 0
-		titan_barrier = 0
-		return
-	var cap: int = int(round(float(max_health) * TITAN_WARD_BARRIER_RATIO * float(count)))
-	titan_barrier_max = max(0, cap)
-	titan_barrier = clamp(titan_barrier, 0, titan_barrier_max)
-
-func _titan_ward_convert_overheal(amount: int) -> void:
-	if amount <= 0 or titan_barrier_max <= 0:
-		return
-	var space: int = max(0, titan_barrier_max - titan_barrier)
-	if space <= 0:
-		return
-	var add: int = min(space, amount)
-	titan_barrier += add
-
-func _apply_titan_ward_barrier_to_damage(amount: int) -> int:
-	if amount <= 0 or titan_barrier <= 0 or titan_barrier_max <= 0:
-		return amount
-	var absorb: int = min(titan_barrier, amount)
-	titan_barrier -= absorb
-	return amount - absorb
-
-func refresh_titan_ward_barrier() -> void:
-	if titan_barrier_max > 0:
-		titan_barrier = titan_barrier_max
-
-func get_titan_ward_barrier() -> Dictionary:
-	return {
-		"current": titan_barrier,
-		"max": titan_barrier_max,
-	}
-
-func _recalc_hemorrhage_engine_values() -> void:
-	var count: int = get_item_count("hemorrhage_engine")
-	if count <= 0:
-		hemorrhage_lifesteal_gain_per_kill = 0
-		hemorrhage_shockwave_damage = 0
-		hemorrhage_shockwave_radius = 0.0
-		_hemorrhage_shockwave_triggers = 0
-		_hemorrhage_shockwave_processing = false
-		return
-	var lifesteal_gain: int = int(floor(float(max_health) / 40.0)) * count
-	hemorrhage_lifesteal_gain_per_kill = max(0, lifesteal_gain)
-	var dmg: int = int(round(float(max_health) * 0.06 * float(count)))
-	hemorrhage_shockwave_damage = max(0, dmg)
-	hemorrhage_shockwave_radius = HEMORRHAGE_SHOCKWAVE_BASE_RADIUS + 20.0 * float(max(0, count - 1))
-
-func _queue_hemorrhage_shockwave() -> void:
-	if hemorrhage_shockwave_damage <= 0:
-		return
-	_hemorrhage_shockwave_triggers += 1
-	if not _hemorrhage_shockwave_processing:
-		_hemorrhage_shockwave_processing = true
-		call_deferred("_process_hemorrhage_shockwaves")
-
-func _process_hemorrhage_shockwaves() -> void:
-	while _hemorrhage_shockwave_triggers > 0 and hemorrhage_shockwave_damage > 0:
-		_hemorrhage_shockwave_triggers -= 1
-		_emit_hemorrhage_shockwave(hemorrhage_shockwave_damage)
-	_hemorrhage_shockwave_processing = false
-	if hemorrhage_shockwave_damage <= 0:
-		_hemorrhage_shockwave_triggers = 0
-
-func _emit_hemorrhage_shockwave(damage: int) -> void:
-	if damage <= 0:
-		return
-	var radius: float = hemorrhage_shockwave_radius if hemorrhage_shockwave_radius > 0.0 else HEMORRHAGE_SHOCKWAVE_BASE_RADIUS
-	var enemies := get_tree().get_nodes_in_group("enemies")
-	for e in enemies:
-		if e == null or not is_instance_valid(e):
-			continue
-		var enemy := e as Node2D
-		if enemy == null:
-			continue
-		if not enemy.has_method("take_damage"):
-			continue
-		var dist: float = enemy.global_position.distance_to(global_position)
-		if dist > radius:
-			continue
-		enemy.set("last_damage_source", {"kind":"item", "item_id":"hemorrhage_engine"})
-		enemy.call("take_damage", damage)
-	_spawn_hemorrhage_shockwave_visual(radius)
-
-func _spawn_hemorrhage_shockwave_visual(radius: float) -> void:
-	var ring := Line2D.new()
-	ring.width = 6.0
-	ring.default_color = Color(0.85, 0.2, 0.4)
-	var segs: int = 32
-	var pts := PackedVector2Array()
-	for s in range(segs + 1):
-		var angle := TAU * float(s) / float(segs)
-		pts.append(Vector2(cos(angle), sin(angle)) * radius)
-	ring.points = pts
-	add_child(ring)
-	ring.position = Vector2.ZERO
-	ring.z_index = 5
-	var tw := create_tween()
-	if tw:
-		tw.tween_property(ring, "width", 0.5, HEMORRHAGE_SHOCKWAVE_DURATION)
-		tw.parallel().tween_property(ring, "modulate:a", 0.0, HEMORRHAGE_SHOCKWAVE_DURATION)
-		tw.tween_callback(Callable(ring, "queue_free"))
-	else:
-		ring.queue_free()
+	var before: int = health
+	health = min(max_health, health + amount)
+	return health - before
 
 func _notification(what: int) -> void:
-	if what == NOTIFICATION_TRANSFORM_CHANGED:
+	if what == Node.NOTIFICATION_TRANSFORM_CHANGED:
 		var current_pos := global_position
 		if not _transform_change_allowed:
 			var delta := current_pos.distance_to(_last_transform_position)
@@ -577,15 +417,16 @@ func apply_upgrade(upg: Dictionary) -> void:
 			apply_move_speed_multiplier(1.0 + float(v))
 		"max_hp":
 			max_health += int(v)
-			notify_max_health_changed()
-			heal(int(v))
+			health = min(max_health, health + int(v))
 		"bullet_speed":
 			projectile_speed_mult *= (1.0 + float(v))
 		"regen":
 			regen_per_second += float(v)
 		"defense":
 			# Reduce incoming damage by value (e.g., 0.10 => 10% less damage taken)
-			apply_incoming_damage_multiplier(1.0 - float(v))
+			incoming_damage_mult *= max(0.0, 1.0 - float(v))
+			# Soft floor to avoid trivializing damage
+			incoming_damage_mult = max(MIN_INCOMING_DAMAGE_MULT, incoming_damage_mult)
 		"projectiles":
 			var add: int = int(v)
 			for i in range(add):
@@ -603,12 +444,6 @@ func apply_upgrade(upg: Dictionary) -> void:
 			turret_power_mult *= (1.0 + float(v))
 		_:
 			pass
-
-# Applies a multiplicative change to incoming damage, respecting the minimum clamp.
-func apply_incoming_damage_multiplier(mult: float) -> void:
-	var m: float = max(0.0, mult)
-	incoming_damage_mult *= m
-	incoming_damage_mult = max(MIN_INCOMING_DAMAGE_MULT, incoming_damage_mult)
 
 # Applies a multiplicative change to move speed with a 3x cap.
 # Overflow beyond 3x converts to Currency Gain multiplier.
@@ -779,41 +614,31 @@ func on_enemy_killed(source: Dictionary) -> void:
 	if source == null or not (source is Dictionary):
 		return
 	var kind: String = String(source.get("kind",""))
-	if kind == "weapon":
-		var wid: String = String(source.get("weapon_id",""))
-		if wid != "":
-			# Find the matching weapon instance to read its stack config and tier
-			var picked: Dictionary = {}
-			for w in weapons:
-				if String(w.get("id","")) == wid:
-					picked = w
-					break
-			if not picked.is_empty() and picked.has("stack"):
-				var sconf: Dictionary = picked["stack"]
-				var base_kills: int = int(sconf.get("base_kills", 5))
-				var tier: int = int(picked.get("tier", 1))
-				# Higher tier requires fewer kills: divide by (1 + 0.25*(tier-1))
-				var denom: float = 1.0 + 0.25 * float(max(0, tier - 1))
-				var need: int = max(1, int(round(float(base_kills) / denom)))
-				var cur: int = int(_kill_counters.get(wid, 0)) + 1
-				if cur >= need:
-					_kill_counters[wid] = 0
-					_apply_stack_effect(String(sconf.get("type","")), sconf, picked)
-				else:
-					_kill_counters[wid] = cur
-	_apply_item_kill_effects()
-
-func _apply_item_kill_effects() -> void:
-	var hem_count: int = get_item_count("hemorrhage_engine")
-	if hem_count <= 0 or max_health <= 0 or health <= 0:
+	if kind != "weapon":
 		return
-	var ratio: float = float(health) / float(max_health)
-	if ratio < 0.75:
+	var wid: String = String(source.get("weapon_id",""))
+	if wid == "":
 		return
-	if hemorrhage_shockwave_damage > 0:
-		_queue_hemorrhage_shockwave()
-	if hemorrhage_lifesteal_gain_per_kill > 0:
-		lifesteal_per_kill += hemorrhage_lifesteal_gain_per_kill
+	# Find the matching weapon instance to read its stack config and tier
+	var picked: Dictionary = {}
+	for w in weapons:
+		if String(w.get("id","")) == wid:
+			picked = w
+			break
+	if picked.is_empty() or not picked.has("stack"):
+		return
+	var sconf: Dictionary = picked["stack"]
+	var base_kills: int = int(sconf.get("base_kills", 5))
+	var tier: int = int(picked.get("tier", 1))
+	# Higher tier requires fewer kills: divide by (1 + 0.25*(tier-1))
+	var denom: float = 1.0 + 0.25 * float(max(0, tier - 1))
+	var need: int = max(1, int(round(float(base_kills) / denom)))
+	var cur: int = int(_kill_counters.get(wid, 0)) + 1
+	if cur >= need:
+		_kill_counters[wid] = 0
+		_apply_stack_effect(String(sconf.get("type","")), sconf, picked)
+	else:
+		_kill_counters[wid] = cur
 
 func _apply_stack_effect(stype: String, conf: Dictionary, source_weapon: Dictionary = {}) -> void:
 	var weapon_id: String = String(source_weapon.get("id", ""))
@@ -838,8 +663,7 @@ func _apply_stack_effect(stype: String, conf: Dictionary, source_weapon: Diction
 		"max_hp":
 			var add: int = int(conf.get("per_stack", 2))
 			max_health += add
-			notify_max_health_changed()
-			heal(add)
+			health = min(max_health, health + add)
 			_show_stack_cue("+%d Max HP" % add, Color(0.6,0.8,1.0))
 		"crit_chance":
 			var inc3: float = float(conf.get("per_stack", 0.02))

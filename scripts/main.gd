@@ -463,7 +463,7 @@ func add_score(kills: int, reward_pts: int) -> void:
 	currency_gained_this_wave += int(round(reward_pts * mult))
 	# Lifesteal should reflect actual kills, not reward scaling.
 	if player and player.lifesteal_per_kill > 0:
-		player.health = min(player.max_health, player.health + player.lifesteal_per_kill * kills)
+		player.heal(player.lifesteal_per_kill * kills)
 
 func _update_ui() -> void:
 	if ui_health:
@@ -812,7 +812,9 @@ func _on_shop_buy(index: int) -> void:
 				"protein_bar":
 					if player:
 						player.max_health += 15
-						player.health = min(player.max_health, player.health + 15)
+						if player.has_method("notify_max_health_changed"):
+							player.notify_max_health_changed()
+						player.heal(15)
 						player.add_item("protein_bar")
 				"medkit":
 					if player:
@@ -862,6 +864,33 @@ func _on_shop_buy(index: int) -> void:
 					if player:
 						player.turret_power_mult *= 1.20
 						player.add_item("engineer_manual")
+				"heartforge_core":
+					if player:
+						player.max_health += 25
+						player.add_item("heartforge_core")
+						if player.has_method("notify_max_health_changed"):
+							player.notify_max_health_changed()
+						player.heal(25)
+				"titan_ward":
+					if player:
+						player.max_health += 30
+						player.add_item("titan_ward")
+						if player.has_method("apply_incoming_damage_multiplier"):
+							player.apply_incoming_damage_multiplier(0.90)
+						else:
+							player.incoming_damage_mult = max(0.20, player.incoming_damage_mult * 0.90)
+						if player.has_method("notify_max_health_changed"):
+							player.notify_max_health_changed()
+						player.heal(30)
+						if player.has_method("refresh_titan_ward_barrier"):
+							player.refresh_titan_ward_barrier()
+				"hemorrhage_engine":
+					if player:
+						player.max_health += 20
+						player.add_item("hemorrhage_engine")
+						if player.has_method("notify_max_health_changed"):
+							player.notify_max_health_changed()
+						player.heal(20)
 				"blast_caps":
 					if player:
 						player.explosive_power_mult *= 1.10
@@ -972,6 +1001,8 @@ func _start_next_wave() -> void:
 	wave += 1
 	elapsed = 0.0
 	in_intermission = false
+	if player and player.has_method("refresh_titan_ward_barrier"):
+		player.refresh_titan_ward_barrier()
 	# Update wave duration with growth per wave, capped at 90s
 	wave_time = _compute_wave_duration(wave)
 	wave_timer.wait_time = wave_time

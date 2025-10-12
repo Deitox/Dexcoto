@@ -182,6 +182,13 @@ const ITEMS: Array[Dictionary] = [
 		 "desc":"+10% Turret Power."},
 		{"kind":"item","id":"engineer_manual","name":"Engineer Manual","cost":16,"rarity":"Rare",
 		 "desc":"+20% Turret Power."},
+		# Super rare survivability-synergy items
+		{"kind":"item","id":"heartforge_core","name":"Heartforge Core","cost":28,"rarity":"Legendary",
+		 "desc":"+25 Max HP. Every 25 Max HP grants +3% damage & +1% attack speed."},
+		{"kind":"item","id":"titan_ward","name":"Titan's Ward","cost":30,"rarity":"Legendary",
+		 "desc":"+30 Max HP, -10% damage taken. Overheal becomes a barrier up to 15% Max HP."},
+		{"kind":"item","id":"hemorrhage_engine","name":"Hemorrhage Engine","cost":32,"rarity":"Legendary",
+		 "desc":"+20 Max HP. Kills above 75% HP trigger shockwaves and stack lifesteal."},
 ]
 
 static func weapons() -> Array[Dictionary]:

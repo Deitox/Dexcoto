@@ -32,6 +32,19 @@ var ignite_fx: Line2D = null
 var void_aura: Line2D = null
 var void_max_time: float = 0.0
 
+const TIER_COLOR_PALETTE: Array[Color] = [
+	Color(0.95, 0.45, 0.45), # ember red
+	Color(0.95, 0.72, 0.35), # ember orange
+	Color(0.93, 0.9, 0.35),  # amber yellow
+	Color(0.52, 0.88, 0.48), # viridian
+	Color(0.42, 0.82, 0.92), # glacier blue
+	Color(0.62, 0.58, 0.96), # arcane violet
+	Color(0.92, 0.5, 0.82),  # magenta
+	Color(0.75, 0.82, 0.88)  # steel
+]
+const TIER_COLOR_VALUE_DROP: float = 0.08
+const TIER_COLOR_SAT_BOOST: float = 0.06
+
 func _ready() -> void:
 	# Add to group only while active (done in activate()).
 	_apply_tier()
@@ -69,7 +82,20 @@ func _apply_tier() -> void:
 	var s: float = 1.0 + 0.15 * float(t - 1)
 	scale = Vector2(s, s)
 	if poly:
-		poly.color = Color(1.0, 0.3 + 0.1 * float(t - 1), 0.3)
+		var tint := _color_for_tier(t)
+		poly.modulate = tint
+		_base_poly_modulate = tint
+
+func _color_for_tier(t: int) -> Color:
+	if TIER_COLOR_PALETTE.is_empty():
+		return Color(1.0, 0.8, 0.35)
+	var idx: int = int((t - 1) % TIER_COLOR_PALETTE.size())
+	var cycle: int = int(floor(float(t - 1) / float(TIER_COLOR_PALETTE.size())))
+	var base: Color = TIER_COLOR_PALETTE[idx]
+	var h: float = base.h
+	var s: float = clamp(base.s + TIER_COLOR_SAT_BOOST * float(cycle), 0.35, 1.0)
+	var v: float = clamp(base.v - TIER_COLOR_VALUE_DROP * float(cycle), 0.45, 1.0)
+	return Color.from_hsv(h, s, v, 1.0)
 
 
 func _physics_process(_delta: float) -> void:

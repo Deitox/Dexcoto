@@ -96,6 +96,48 @@ func _refresh() -> void:
 	n = int(counts.get("medkit", 0))
 	if n > 0:
 		_add_entry(entries, id_to_name, id_to_rarity, "medkit", "%s x%d - +%.1f HP/s regen" % [name_of("medkit","Medkit", id_to_name), n, 1.0*float(n)])
+	n = int(counts.get("heartforge_core", 0))
+	if n > 0:
+		var player_max_hp: int = 0
+		var dmg_mult: float = 1.0
+		var atk_mult: float = 1.0
+		if player != null:
+			player_max_hp = int(player.get("max_health"))
+			var hd = player.get("heartforge_damage_bonus_applied")
+			if hd != null:
+				dmg_mult = float(hd)
+			var ha = player.get("heartforge_attack_bonus_applied")
+			if ha != null:
+				atk_mult = float(ha)
+		var stacks := int(floor(float(player_max_hp) / 25.0))
+		_add_entry(entries, id_to_name, id_to_rarity, "heartforge_core", "%s x%d - Stacks %d, Damage x%.2f, Attack x%.2f" % [name_of("heartforge_core","Heartforge Core", id_to_name), n, stacks, dmg_mult, atk_mult])
+	n = int(counts.get("titan_ward", 0))
+	if n > 0:
+		var barrier_cur: int = 0
+		var barrier_max: int = 0
+		if player != null and player.has_method("get_titan_ward_barrier"):
+			var state: Dictionary = player.get_titan_ward_barrier()
+			barrier_cur = int(state.get("current", 0))
+			barrier_max = int(state.get("max", 0))
+		_add_entry(entries, id_to_name, id_to_rarity, "titan_ward", "%s x%d - +30 Max HP, -10%% dmg taken. Barrier %d/%d" % [name_of("titan_ward","Titan's Ward", id_to_name), n, barrier_cur, barrier_max])
+	n = int(counts.get("hemorrhage_engine", 0))
+	if n > 0:
+		var shock_dmg: int = 0
+		var radius: int = 0
+		var lifesteal_gain: int = 0
+		if player != null:
+			var sd = player.get("hemorrhage_shockwave_damage")
+			if sd != null:
+				shock_dmg = int(sd)
+			var rad = player.get("hemorrhage_shockwave_radius")
+			if rad != null:
+				radius = int(round(float(rad)))
+			var ls = player.get("hemorrhage_lifesteal_gain_per_kill")
+			if ls != null:
+				lifesteal_gain = int(ls)
+		if radius <= 0:
+			radius = 160
+		_add_entry(entries, id_to_name, id_to_rarity, "hemorrhage_engine", "%s x%d - Shockwave %d dmg (r=%d). +%d lifesteal/kill @75%% HP" % [name_of("hemorrhage_engine","Hemorrhage Engine", id_to_name), n, shock_dmg, radius, lifesteal_gain])
 
 	# Economy and damage
 	n = int(counts.get("greed_token", 0))
