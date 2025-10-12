@@ -143,10 +143,11 @@ anchor_left = 0.5
 anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
-offset_left = -300.0
-offset_top = -220.0
-offset_right = 300.0
-offset_bottom = 220.0
+offset_left = -360.0
+offset_top = -240.0
+offset_right = 360.0
+offset_bottom = 240.0
+theme_override_constants/separation = 12
 
 [node name="Title" type="Label" parent="UI/ShopPanel/VBox"]
 layout_mode = 2
@@ -154,27 +155,46 @@ theme_override_font_sizes/font_size = 24
 text = "Shop - Currency: 0"
 horizontal_alignment = 1
 
-[node name="Options" type="HBoxContainer" parent="UI/ShopPanel/VBox"]
+[node name="Options" type="GridContainer" parent="UI/ShopPanel/VBox"]
 layout_mode = 2
+columns = 3
+h_separation = 12
+v_separation = 12
+size_flags_horizontal = 3
 size_flags_vertical = 3
 
 [node name="Option1" type="Button" parent="UI/ShopPanel/VBox/Options"]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
+custom_minimum_size = Vector2(220, 110)
+theme_override_font_sizes/font_size = 18
 text = "Offer 1"
+horizontal_alignment = 0
+vertical_alignment = 0
+autowrap_mode = 2
 
 [node name="Option2" type="Button" parent="UI/ShopPanel/VBox/Options"]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
+custom_minimum_size = Vector2(220, 110)
+theme_override_font_sizes/font_size = 18
 text = "Offer 2"
+horizontal_alignment = 0
+vertical_alignment = 0
+autowrap_mode = 2
 
 [node name="Option3" type="Button" parent="UI/ShopPanel/VBox/Options"]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
+custom_minimum_size = Vector2(220, 110)
+theme_override_font_sizes/font_size = 18
 text = "Offer 3"
+horizontal_alignment = 0
+vertical_alignment = 0
+autowrap_mode = 2
 
 [node name="Bottom" type="HBoxContainer" parent="UI/ShopPanel/VBox"]
 layout_mode = 2
@@ -189,14 +209,14 @@ layout_mode = 2
 text = "Start Next Wave"
 
 [node name="Summary" type="Control" parent="UI/ShopPanel/VBox"]
-custom_minimum_size = Vector2(560, 420)
+custom_minimum_size = Vector2(640, 420)
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 script = ExtResource("11")
 
 [node name="RichText" type="RichTextLabel" parent="UI/ShopPanel/VBox/Summary"]
-custom_minimum_size = Vector2(560, 420)
+custom_minimum_size = Vector2(640, 420)
 layout_mode = 0
 size_flags_horizontal = 3
 bbcode_enabled = true
