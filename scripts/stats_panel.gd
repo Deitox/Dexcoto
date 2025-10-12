@@ -45,9 +45,20 @@ static func _deg(v: float) -> String:
 	return "%.1f%s" % [v, deg]
 
 static func _fmt_scientific(v: float, digits: int) -> String:
+	if v == 0.0:
+		return "0"
 	var prec: int = max(digits, 0)
-	var fmt: String = "%." + str(prec) + "e"
-	return _normalize_sci(fmt % v)
+	var sign_prefix: String = "-" if v < 0.0 else ""
+	var abs_v: float = abs(v)
+	var exponent: int = int(floor(log(abs_v) / log(10.0)))
+	var mantissa: float = abs_v / pow(10.0, exponent)
+	var mantissa_text: String = String.num(mantissa, prec)
+	var exp_abs: int = abs(exponent)
+	var exp_sign: String = "+" if exponent >= 0 else "-"
+	var exp_digits: String = str(exp_abs)
+	if exp_abs < 100:
+		exp_digits = exp_digits.pad_zeros(2)
+	return "%s%se%s%s" % [sign_prefix, mantissa_text, exp_sign, exp_digits]
 
 static func _fmt_float(v: float, decimals: int = 2, sci_threshold: float = SCI_THRESHOLD) -> String:
 	if not is_finite(v):

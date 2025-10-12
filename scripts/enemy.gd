@@ -18,6 +18,8 @@ var last_damage_source: Dictionary = {}
 
 # Base color cache for tinting
 var _base_poly_modulate: Color = Color(1,1,1,1)
+var _base_poly_color: Color = Color(1,1,1,1)
+var _base_shape_half_size: Vector2 = Vector2(10, 10)
 
 # Elemental status effects
 var ignite_time: float = 0.0
@@ -32,18 +34,23 @@ var ignite_fx: Line2D = null
 var void_aura: Line2D = null
 var void_max_time: float = 0.0
 
+var border_ring: Line2D = null
+
 const TIER_COLOR_PALETTE: Array[Color] = [
-	Color(0.72, 0.58, 0.70), # muted lavender
-	Color(0.48, 0.68, 0.72), # desaturated teal
-	Color(0.56, 0.70, 0.55), # soft moss
-	Color(0.70, 0.60, 0.44), # warm ochre
-	Color(0.70, 0.50, 0.48), # brick rose
-	Color(0.66, 0.52, 0.62), # plum haze
-	Color(0.52, 0.62, 0.78), # calm steel blue
-	Color(0.68, 0.64, 0.60)  # warm grey
+	Color(0.78, 0.78, 0.80), # Common - soft silver
+	Color(0.45, 0.78, 0.45), # Uncommon - verdant green
+	Color(0.45, 0.68, 0.90), # Rare - sky blue
+	Color(0.58, 0.45, 0.88), # Epic - royal violet
+	Color(0.96, 0.70, 0.32), # Legendary - golden orange
+	Color(0.72, 0.58, 0.70), # Mythic - muted lavender
+	Color(0.48, 0.68, 0.72), # Ancient - dusk teal
+	Color(0.56, 0.70, 0.55), # Primal - sage moss
+	Color(0.74, 0.60, 0.44), # Celestial - warm ochre
+	Color(0.70, 0.50, 0.48), # Infernal - brick rose
+	Color(0.66, 0.52, 0.62), # Eldritch - plum haze
+	Color(0.52, 0.62, 0.78), # Transcendent - steel blue
+	Color(0.68, 0.64, 0.60)  # Divine - warm stone grey
 ]
-const TIER_COLOR_VALUE_DROP: float = 0.05
-const TIER_COLOR_SAT_BOOST: float = 0.04
 
 func _ready() -> void:
 	# Add to group only while active (done in activate()).
@@ -53,6 +60,8 @@ func _ready() -> void:
 		hitbox.body_entered.connect(_on_hitbox_body_entered)
 	if poly:
 		_base_poly_modulate = poly.modulate
+		_base_poly_color = poly.color
+		_compute_base_shape_bounds()
 
 func set_tier(t: int) -> void:
 	tier = max(1, t)
@@ -83,19 +92,86 @@ func _apply_tier() -> void:
 	scale = Vector2(s, s)
 	if poly:
 		var tint := _color_for_tier(t)
-		poly.modulate = tint
-		_base_poly_modulate = tint
+		poly.color = tint
+		_base_poly_color = tint
+		poly.modulate = _base_poly_modulate
+		_compute_base_shape_bounds()
+	_update_tier_border(t)
 
 func _color_for_tier(t: int) -> Color:
 	if TIER_COLOR_PALETTE.is_empty():
 		return Color(1.0, 0.8, 0.35)
 	var idx: int = int((t - 1) % TIER_COLOR_PALETTE.size())
-	var cycle: int = int(floor(float(t - 1) / float(TIER_COLOR_PALETTE.size())))
-	var base: Color = TIER_COLOR_PALETTE[idx]
-	var h: float = base.h
-	var s: float = clamp(base.s + TIER_COLOR_SAT_BOOST * float(cycle), 0.35, 1.0)
-	var v: float = clamp(base.v - TIER_COLOR_VALUE_DROP * float(cycle), 0.45, 1.0)
-	return Color.from_hsv(h, s, v, 1.0)
+	return TIER_COLOR_PALETTE[idx]
+
+func _compute_base_shape_bounds() -> void:
+	if poly == null:
+		return
+	var pts: PackedVector2Array = poly.polygon
+	if pts.size() <= 0:
+		return
+	var min_v := pts[0]
+	var max_v := pts[0]
+	for p in pts:
+		min_v.x = min(min_v.x, p.x)
+		min_v.y = min(min_v.y, p.y)
+		max_v.x = max(max_v.x, p.x)
+		max_v.y = max(max_v.y, p.y)
+	var size := max_v - min_v
+	if size.x <= 0.0 or size.y <= 0.0:
+		return
+	_base_shape_half_size = size * 0.5
+
+func _update_tier_border(t: int) -> void:
+	var palette_size: int = TIER_COLOR_PALETTE.size()
+	if palette_size <= 0:
+		_clear_tier_border()
+		return
+	var cycle: int = int(floor(float(t - 1) / float(palette_size)))
+	if cycle <= 0:
+		_clear_tier_border()
+		return
+	_ensure_tier_border()
+	var border_color_idx: int = int((cycle - 1) % palette_size)
+	border_ring.default_color = TIER_COLOR_PALETTE[border_color_idx]
+	border_ring.width = 3.0 + float(min(cycle, 5))
+	var scale_mult: float = 1.05 + 0.04 * float(max(0, cycle - 1))
+	_set_border_ring_points(scale_mult)
+
+func _ensure_tier_border() -> void:
+	if border_ring != null and is_instance_valid(border_ring):
+		return
+	border_ring = Line2D.new()
+	border_ring.width = 3.0
+	border_ring.default_color = Color(1, 1, 1, 0.9)
+	border_ring.joint_mode = Line2D.LINE_JOINT_SHARP
+	border_ring.end_cap_mode = Line2D.LINE_CAP_BOX
+	border_ring.z_index = 950
+	border_ring.points = PackedVector2Array()
+	border_ring.closed = true
+	add_child(border_ring)
+	border_ring.position = Vector2.ZERO
+
+func _clear_tier_border() -> void:
+	if border_ring != null and is_instance_valid(border_ring):
+		border_ring.queue_free()
+	border_ring = null
+
+func _set_border_ring_points(scale_mult: float) -> void:
+	if border_ring == null:
+		return
+	var margin := Vector2(1.2, 1.2)
+	var scale_vec := Vector2(absf(scale.x), absf(scale.y))
+	var base_half := Vector2(_base_shape_half_size.x * scale_vec.x, _base_shape_half_size.y * scale_vec.y)
+	var half := (base_half + margin) * scale_mult
+	var pts := PackedVector2Array([
+		Vector2(-half.x, -half.y),
+		Vector2(half.x, -half.y),
+		Vector2(half.x, half.y),
+		Vector2(-half.x, half.y),
+		Vector2(-half.x, -half.y),
+	])
+	border_ring.points = pts
 
 
 func _physics_process(_delta: float) -> void:
@@ -152,9 +228,9 @@ func _on_hitbox_body_entered(body: Node) -> void:
 			body.take_damage(contact_damage)
 
 func activate(pos: Vector2, t: int, tgt: Node2D, p: Node) -> void:
-	_reset_status_effects()
 	global_position = pos
 	set_tier(t)
+	_reset_status_effects()
 	target = tgt
 	pool = p
 	active = true
@@ -168,7 +244,6 @@ func activate(pos: Vector2, t: int, tgt: Node2D, p: Node) -> void:
 		body_shape.set_deferred("disabled", false)
 	if poly:
 		poly.visible = true
-	last_damage_source = {}
 
 func deactivate() -> void:
 	active = false
@@ -363,5 +438,6 @@ func _update_status_visuals() -> void:
 func _clear_status_visuals() -> void:
 	if poly:
 		poly.modulate = _base_poly_modulate
+		poly.color = _base_poly_color
 	_clear_ignite_fx()
 	_clear_void_aura()

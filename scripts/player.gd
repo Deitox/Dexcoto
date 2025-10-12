@@ -129,7 +129,7 @@ func _physics_process(delta: float) -> void:
 	# cancel the move and zero velocity. This is defensive while we hunt the root cause.
 	var step_dist: float = global_position.distance_to(_last_pos)
 	var expected_step: float = move_speed * delta * 2.5 # generous factor for diagonals/buffs
-	var hard_cap: float = 320.0 # absolute threshold in px/frame
+	var hard_cap: float = 480.0 # absolute threshold in px/frame (guard against genuine teleports)
 	if step_dist > max(expected_step, hard_cap):
 		var attempted_pos: Vector2 = global_position
 		var prev_pos: Vector2 = _last_pos
