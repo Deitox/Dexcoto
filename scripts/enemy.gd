@@ -33,17 +33,17 @@ var void_aura: Line2D = null
 var void_max_time: float = 0.0
 
 const TIER_COLOR_PALETTE: Array[Color] = [
-	Color(0.95, 0.45, 0.45), # ember red
-	Color(0.95, 0.72, 0.35), # ember orange
-	Color(0.93, 0.9, 0.35),  # amber yellow
-	Color(0.52, 0.88, 0.48), # viridian
-	Color(0.42, 0.82, 0.92), # glacier blue
-	Color(0.62, 0.58, 0.96), # arcane violet
-	Color(0.92, 0.5, 0.82),  # magenta
-	Color(0.75, 0.82, 0.88)  # steel
+	Color(0.72, 0.58, 0.70), # muted lavender
+	Color(0.48, 0.68, 0.72), # desaturated teal
+	Color(0.56, 0.70, 0.55), # soft moss
+	Color(0.70, 0.60, 0.44), # warm ochre
+	Color(0.70, 0.50, 0.48), # brick rose
+	Color(0.66, 0.52, 0.62), # plum haze
+	Color(0.52, 0.62, 0.78), # calm steel blue
+	Color(0.68, 0.64, 0.60)  # warm grey
 ]
-const TIER_COLOR_VALUE_DROP: float = 0.08
-const TIER_COLOR_SAT_BOOST: float = 0.06
+const TIER_COLOR_VALUE_DROP: float = 0.05
+const TIER_COLOR_SAT_BOOST: float = 0.04
 
 func _ready() -> void:
 	# Add to group only while active (done in activate()).
@@ -152,6 +152,7 @@ func _on_hitbox_body_entered(body: Node) -> void:
 			body.take_damage(contact_damage)
 
 func activate(pos: Vector2, t: int, tgt: Node2D, p: Node) -> void:
+	_reset_status_effects()
 	global_position = pos
 	set_tier(t)
 	target = tgt
@@ -167,6 +168,7 @@ func activate(pos: Vector2, t: int, tgt: Node2D, p: Node) -> void:
 		body_shape.set_deferred("disabled", false)
 	if poly:
 		poly.visible = true
+	last_damage_source = {}
 
 func deactivate() -> void:
 	active = false
@@ -177,14 +179,7 @@ func deactivate() -> void:
 		hitbox.set_deferred("monitoring", false)
 	if body_shape:
 		body_shape.set_deferred("disabled", true)
-	ignite_time = 0.0
-	ignite_dps = 0.0
-	ignite_accum = 0.0
-	freeze_time = 0.0
-	void_time = 0.0
-	void_vuln = 0.0
-	_clear_status_visuals()
-	last_damage_source = {}
+	_reset_status_effects()
 
 func _return_to_pool() -> void:
 	if pool and pool.has_method("return_enemy"):
@@ -314,6 +309,17 @@ func _clear_void_aura() -> void:
 		void_aura.queue_free()
 	void_aura = null
 	void_max_time = 0.0
+
+func _reset_status_effects() -> void:
+	ignite_time = 0.0
+	ignite_dps = 0.0
+	ignite_accum = 0.0
+	freeze_time = 0.0
+	void_time = 0.0
+	void_vuln = 0.0
+	void_max_time = 0.0
+	last_damage_source = {}
+	_clear_status_visuals()
 
 func _spawn_shock_arc(from_pos: Vector2, to_pos: Vector2) -> void:
 	var arc := Line2D.new()

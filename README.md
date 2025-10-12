@@ -2,7 +2,7 @@
 
 Tiny Godot 4 arena-survivor prototype. Move, auto-aim at the nearest enemy, and survive timed waves that ramp up. Between waves, pick upgrades and shop for items/weapons.
 
-## What’s New (Gameplay + UX)
+## What's New (Gameplay + UX)
 
 - Crit System
   - Weapons can now crit. Crit chance hard-caps at 100%; any overflow converts into extra crit damage. The Stats panel shows Crit Chance and Crit Damage, including overflow.
@@ -22,10 +22,12 @@ Tiny Godot 4 arena-survivor prototype. Move, auto-aim at the nearest enemy, and 
   - Extremely fast projectiles become beams whose damage scales by speed overflow.
   - Beams are now true channel beams: once beaming, they hold a continuous line, follow the shooter, and persist while the shooter is firing. They retarget robustly and hide when no valid targets exist to avoid “shooting at emptiness”.
 
-- Visual Feedback
+- Visual Feedback & Readability
   - Floating damage numbers added broadly, including for beam ticks and burn (Ignite) DoT; bosses now display floating damage numbers too.
+  - Late-wave enemy palette now cycles through a softer, desaturated color set per tier to keep high-tier swarms readable (no more universal neon yellow).
+  - Enemies pulled from the pool reset elemental state on spawn so fresh spawns never inherit Void/other debuffs without being hit.
 
-## What’s New (Balance + Progression)
+## What's New (Balance + Progression)
 
 - Wave Duration: grows with wave (+4s per wave) and caps at 90s.
 - Enemy Density: soft/hard caps scale by wave (up to ~4×) for larger late‑wave swarms.
@@ -50,7 +52,11 @@ Tiny Godot 4 arena-survivor prototype. Move, auto-aim at the nearest enemy, and 
 ## New Content (Summary)
 
 - Weapons: Assassin (crit), Guardian (defense), Accelerator (projectile speed), Sprinter (move speed). All four stack on kills (fewer kills per stack at higher tiers).
-- Items: Kevlar Vest, Riot Armor, Plated Armor, Nanoshield (Defense line), plus existing speed/elemental/turret items.
+- Legendary & super-rare items:
+  - Heartforge Core — +25 Max HP; every 25 Max HP grants +3% damage and +1% attack speed (re-scales automatically).
+  - Titan's Ward — +30 Max HP, -10% damage taken, overheal converts into a barrier that refreshes each wave.
+  - Hemorrhage Engine — +20 Max HP; kills above 75% HP emit HP-scaled shockwaves and stack lifesteal.
+- Survivability line: Kevlar Vest, Riot Armor, Plated Armor, Nanoshield (Defense), plus existing speed/elemental/turret items.
 
 
 ## Requirements
@@ -88,7 +94,7 @@ Tiny Godot 4 arena-survivor prototype. Move, auto-aim at the nearest enemy, and 
 ## Systems & Features
 
 - Weapons (up to 6 slots): Auto-fire toward the nearest enemy. Three of the same weapon at the same tier merge into one of the next tier. Higher tiers increase damage and fire rate; every 3 tiers add two projectiles.
-- Items: Stackable effects like attack speed, regen, lifesteal, currency gain, projectile speed, max HP, placing turrets for the next wave, and turret-specific stats (Turret Power, Turret Projectile Speed).
+- Items: Stackable effects like attack speed, regen, lifesteal, currency gain, projectile speed, max HP, placing turrets for the next wave, and turret-specific stats (Turret Power, Turret Projectile Speed). Super-rare legendaries add advanced HP synergies (Heartforge Core, Titan's Ward, Hemorrhage Engine).
 - Turrets: Stationary allies purchased in the shop or spawned by certain weapons on kill. If too many accumulate, groups of 3 same-tier turrets merge up to keep counts reasonable. Turret damage scales with your Turret Power stat.
 - Projectiles & Beams: Excessive projectile counts are capped; overflow converts into proportional damage. Very fast shots convert into short-lived beams to reduce object churn. The beam threshold is configurable in `scripts/bullet_pool.gd`.
 - Enemies & Boss: Enemies scale by tier; bosses scale by wave. Kills grant score, XP, and currency based on enemy power.
@@ -152,6 +158,22 @@ Some weapons grant stacking bonuses on kill. Higher tiers require fewer kills fo
 - Base: `id`, `name`, `fire_interval`, `damage`, `speed`, `projectiles`, `color`.
 - Elemental (optional): `element`, `element_proc`, `ignite_factor`, `ignite_duration`, `freeze_duration`, `arc_count`, `arc_radius`, `arc_factor`, `vuln`, `vuln_duration`.
 - Explosive (optional): `explosive`, `expl_radius`, `expl_factor`.
+
+## Rarity & Color Reference
+
+- Common — soft silver
+- Uncommon — verdant green
+- Rare — sky blue
+- Epic — royal violet
+- Legendary — golden orange
+- Mythic — muted lavender
+- Ancient — dusk teal
+- Primal — sage moss
+- Celestial — warm ochre
+- Infernal — brick rose
+- Eldritch — plum haze
+- Transcendent — steel blue
+- Divine — warm stone grey
 
 ## Troubleshooting
 
