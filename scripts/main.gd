@@ -44,7 +44,7 @@ func _refresh_stats_panel_now() -> void:
 @onready var ui_xp_label: Label = $UI/TopCenter/LevelBar/XPLabel
 @onready var ui_level_label: Label = $UI/TopCenter/LevelBar/LevelLabel
 @onready var ui_wave: Label = $UI/MarginContainer/HBoxContainer/Wave
-@onready var ui_time: Label = $UI/MarginContainer/HBoxContainer/Time
+@onready var ui_time: Label = $UI/TopCenter/TimerLabel
 @onready var ui_score: Label = $UI/MarginContainer/HBoxContainer/Score
 @onready var upgrade_panel: Control = $UI/UpgradePanel
 @onready var upgrade_title: Label = $UI/UpgradePanel/VBox/Title
@@ -491,10 +491,10 @@ func _update_ui() -> void:
 	if ui_wave:
 		var diff_label := String(difficulty)
 		ui_wave.text = "Wave: %d  (%s)" % [wave, diff_label]
-	if ui_time:
-		ui_time.text = "  |  Time: %d" % int(max(0.0, wave_time - elapsed))
 	if ui_score:
-		ui_score.text = "  |  Score: %d" % score
+		ui_score.text = "Score: %d" % score
+	if ui_time:
+		ui_time.text = "Time: %d" % int(max(0.0, wave_time - elapsed))
 	_update_weapons_hud()
 
 func _update_weapons_hud() -> void:
