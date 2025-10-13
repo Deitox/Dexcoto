@@ -219,6 +219,11 @@ func _free_and_notify() -> void:
 			pool.call("on_beam_freed", _beam_key)
 	queue_free()
 
+func force_stop() -> void:
+	_channel = false
+	_active = false
+	_free_and_notify()
+
 func is_channeling() -> bool:
 	return _channel
 

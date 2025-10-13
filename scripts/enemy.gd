@@ -34,7 +34,7 @@ var ignite_fx: Line2D = null
 var void_aura: Line2D = null
 var void_max_time: float = 0.0
 
-var border_ring: Line2D = null
+var tier_marker: Polygon2D = null
 
 const TIER_COLOR_PALETTE: Array[Color] = [
 	Color(0.78, 0.78, 0.80), # Common - soft silver
@@ -95,8 +95,8 @@ func _apply_tier() -> void:
 		poly.color = tint
 		_base_poly_color = tint
 		poly.modulate = _base_poly_modulate
-		_compute_base_shape_bounds()
-	_update_tier_border(t)
+	_compute_base_shape_bounds()
+	_update_tier_marker(t)
 
 func _color_for_tier(t: int) -> Color:
 	if TIER_COLOR_PALETTE.is_empty():
@@ -122,62 +122,56 @@ func _compute_base_shape_bounds() -> void:
 		return
 	_base_shape_half_size = size * 0.5
 
-func _update_tier_border(t: int) -> void:
+func _update_tier_marker(t: int) -> void:
 	var palette_size: int = TIER_COLOR_PALETTE.size()
 	if palette_size <= 0:
-		_clear_tier_border()
+		_clear_tier_marker()
 		return
 	var cycle: int = int(floor(float(t - 1) / float(palette_size)))
+
 	if cycle <= 0:
-		_clear_tier_border()
+		_clear_tier_marker()
 		return
-	_ensure_tier_border()
-	var border_color_idx: int = int((cycle - 1) % palette_size)
-	border_ring.default_color = TIER_COLOR_PALETTE[border_color_idx]
-	border_ring.width = 3.0 + float(min(cycle, 5))
-	var scale_mult: float = 1.05 + 0.04 * float(max(0, cycle - 1))
-	_set_border_ring_points(scale_mult)
-
-func _ensure_tier_border() -> void:
-	if border_ring != null and is_instance_valid(border_ring):
-		return
-	border_ring = Line2D.new()
-	border_ring.width = 3.0
-	border_ring.default_color = Color(1, 1, 1, 0.9)
-	border_ring.joint_mode = Line2D.LINE_JOINT_SHARP
-	border_ring.end_cap_mode = Line2D.LINE_CAP_BOX
-	border_ring.z_index = 950
-	border_ring.points = PackedVector2Array()
-	border_ring.closed = true
-	add_child(border_ring)
-	border_ring.position = Vector2.ZERO
-
-func _clear_tier_border() -> void:
-	if border_ring != null and is_instance_valid(border_ring):
-		border_ring.queue_free()
-	border_ring = null
-
-func _set_border_ring_points(scale_mult: float) -> void:
-	if border_ring == null:
-		return
-	var margin := Vector2(1.2, 1.2)
+	_ensure_tier_marker()
+	var color_idx: int = int((cycle - 1) % palette_size)
+	var col: Color = TIER_COLOR_PALETTE[color_idx]
+	var size: float = 8.0 + 2.0 * float(min(cycle, 4))
 	var scale_vec := Vector2(absf(scale.x), absf(scale.y))
 	var base_half := Vector2(_base_shape_half_size.x * scale_vec.x, _base_shape_half_size.y * scale_vec.y)
-	var half := (base_half + margin) * scale_mult
+	var offset_y := -(base_half.y + size + 6.0)
+	tier_marker.visible = true
+	tier_marker.color = col
+	tier_marker.position = Vector2(0, offset_y)
 	var pts := PackedVector2Array([
-		Vector2(-half.x, -half.y),
-		Vector2(half.x, -half.y),
-		Vector2(half.x, half.y),
-		Vector2(-half.x, half.y),
-		Vector2(-half.x, -half.y),
+		Vector2(0, -size),
+		Vector2(size, 0),
+		Vector2(0, size),
+		Vector2(-size, 0),
 	])
-	border_ring.points = pts
+	tier_marker.polygon = pts
+
+func _ensure_tier_marker() -> void:
+	if tier_marker != null and is_instance_valid(tier_marker):
+		return
+	tier_marker = Polygon2D.new()
+	tier_marker.color = Color(1, 1, 1)
+	tier_marker.antialiased = true
+	tier_marker.z_index = 1200
+	add_child(tier_marker)
+	tier_marker.position = Vector2.ZERO
+
+func _clear_tier_marker() -> void:
+	if tier_marker != null and is_instance_valid(tier_marker):
+		tier_marker.queue_free()
+	tier_marker = null
+
 
 
 func _physics_process(_delta: float) -> void:
 	if not active:
 		return
 	var delta := _delta
+
 	# Elemental DoT / debuffs
 	if ignite_time > 0.0:
 		ignite_time = max(0.0, ignite_time - delta)
@@ -229,8 +223,8 @@ func _on_hitbox_body_entered(body: Node) -> void:
 
 func activate(pos: Vector2, t: int, tgt: Node2D, p: Node) -> void:
 	global_position = pos
-	set_tier(t)
 	_reset_status_effects()
+	set_tier(t)
 	target = tgt
 	pool = p
 	active = true
@@ -395,6 +389,7 @@ func _reset_status_effects() -> void:
 	void_max_time = 0.0
 	last_damage_source = {}
 	_clear_status_visuals()
+	_clear_tier_marker()
 
 func _spawn_shock_arc(from_pos: Vector2, to_pos: Vector2) -> void:
 	var arc := Line2D.new()

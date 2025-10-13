@@ -12,6 +12,20 @@ var _active_beams: Dictionary = {} # weapon_id -> Beam node
 
 func _ready() -> void:
 	add_to_group("bullet_pool")
+	
+func stop_beam(key: String) -> void:
+	if key.is_empty():
+		return
+	if not _active_beams.has(key):
+		return
+	var beam = _active_beams[key]
+	if is_instance_valid(beam):
+		if beam.has_method("force_stop"):
+			beam.call("force_stop")
+		else:
+			beam.queue_free()
+	else:
+		_active_beams.erase(key)
 
 func spawn_bullet(pos: Vector2, dir: Vector2, speed: float, damage: int, color: Color, lifetime: float = 2.0, effect: Dictionary = {}) -> Node:
 	# If speed exceeds threshold, convert to a beam and scale damage by overflow.

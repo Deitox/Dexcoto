@@ -16,6 +16,7 @@ var turret_role: String = "attack"
 var heal_amount: int = 6
 var healing_aura: Line2D = null
 var aura_time: float = 0.0
+var _beam_key: String = ""
 
 # Performance caps
 const MIN_TURRET_INTERVAL: float = 0.12
@@ -49,6 +50,7 @@ func _color_for_tier(t: int) -> Color:
 
 func _ready() -> void:
 	# Add to group only while active (in activate()).
+	_beam_key = "turret_%d" % get_instance_id()
 	_apply_tier()
 	bullet_pool = get_tree().get_first_node_in_group("bullet_pool")
 
@@ -151,7 +153,9 @@ func _shoot(pos: Vector2) -> void:
 		var tpsm: float = float(player.get("turret_projectile_speed_mult"))
 		if tpsm > 0.0:
 			spd_to_use = speed * tpsm
-	var fx: Dictionary = {"source": {"kind":"turret", "weapon_id": "turret_%d" % get_instance_id()}}
+	if _beam_key == "":
+		_beam_key = "turret_%d" % get_instance_id()
+	var fx: Dictionary = {"source": {"kind":"turret", "weapon_id": _beam_key}}
 	if bullet_pool and bullet_pool.has_method("spawn_bullet"):
 		# Provide current fire interval for beam DPS estimate
 		fx["fire_interval"] = float(fire_interval)
@@ -255,6 +259,8 @@ func _update_healing_aura() -> void:
 	healing_aura.modulate = col
 
 func activate(pos: Vector2, t: int, p: Node, mode := "attack") -> void:
+	_stop_active_beam()
+	bullet_pool = get_tree().get_first_node_in_group("bullet_pool")
 	turret_role = String(mode)
 	global_position = pos
 	pool = p
@@ -275,6 +281,7 @@ func activate(pos: Vector2, t: int, p: Node, mode := "attack") -> void:
 	visible = true
 
 func deactivate() -> void:
+	_stop_active_beam()
 	active = false
 	visible = false
 	if is_in_group("turrets"):
@@ -286,3 +293,12 @@ func deactivate() -> void:
 	_cd = 0.0
 	_hide_healing_aura()
 	pool = null
+	_beam_key = "turret_%d" % get_instance_id()
+	bullet_pool = get_tree().get_first_node_in_group("bullet_pool")
+
+func _stop_active_beam() -> void:
+	if _beam_key == "":
+		return
+	var pool_node = get_tree().get_first_node_in_group("bullet_pool")
+	if pool_node and pool_node.has_method("stop_beam"):
+		pool_node.call("stop_beam", _beam_key)

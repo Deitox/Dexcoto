@@ -202,6 +202,7 @@ func refresh() -> void:
 	var crit_ch: float = float(player.get("crit_chance")) if player.has_method("get") else 0.0
 	var crit_dm: float = float(player.get("crit_damage_mult")) if player.has_method("get") else 1.5
 	var extra_cc: float = max(0.0, crit_ch - 1.0)
+	var crit_total: float = crit_dm + extra_cc
 	var show_crit: bool = crit_ch > 0.0 or crit_dm > 1.0
 	if show_crit:
 		var cc_val: float = min(crit_ch, 1.0)
@@ -212,17 +213,14 @@ func refresh() -> void:
 		elif crit_ch >= 0.9:
 			cc_color = Color("#ffb74d")
 		_add_kv(off, "Crit Chance", cc_text, cc_color)
-		var cd_text := "x%s" % _fmt_float(crit_dm + extra_cc, 2)
-		if extra_cc > 0.0:
-			cd_text += " (%s overflow)" % _fmt_signed(extra_cc, 2)
-		_add_kv(off, "Crit Damage", cd_text)
+		_add_kv(off, "Crit Damage", "x%s" % _fmt_float(crit_total, 2))
 	var as_col: Color = Color.WHITE
 	if atk_mult >= atk_cap:
 		as_col = Color("#ff7043")
 	elif atk_mult >= atk_cap * 0.9:
 		as_col = Color("#ffb74d")
-	# Split long Attack Speed details into separate aligned rows to avoid clipping
-	_add_kv(off, "Attack Speed", "x%s" % _fmt_float(atk_mult, 2), as_col)
+	var atk_display = min(atk_mult, atk_cap)
+	_add_kv(off, "Attack Speed", "x%s" % _fmt_float(atk_display, 2), as_col)
 	_add_kv(off, "Min Interval", "%ss" % _fmt_float(min_interval, 2))
 	_add_kv(off, "Spread", _deg(spread_deg))
 
@@ -237,7 +235,7 @@ func refresh() -> void:
 	_add_kv(proj, "Beam threshold", "%s px/s" % _fmt_float(beam_threshold, 0))
 
 	# Overflows consolidated
-	if as_overflow_mult > 1.0 or proj_overflow_mult > 1.0 or move_overflow_mult > 1.0 or beam_overflow_mult > 1.0 or def_overflow_mult > 1.0:
+	if as_overflow_mult > 1.0 or proj_overflow_mult > 1.0 or move_overflow_mult > 1.0 or beam_overflow_mult > 1.0 or def_overflow_mult > 1.0 or extra_cc > 0.0:
 		_add_section_header("Overflows", _tier_hex(5))
 		var ov := _add_grid()
 		if as_overflow_mult > 1.0:
@@ -250,6 +248,8 @@ func refresh() -> void:
 			_add_kv(ov, "Proj Speed -> Beam Dmg", _pct(beam_overflow_mult), Color("#66bb6a"))
 		if def_overflow_mult > 1.0:
 			_add_kv(ov, "Defense -> Healing", _pct(def_overflow_mult), Color("#66bb6a"))
+		if extra_cc > 0.0:
+			_add_kv(ov, "Crit Chance -> Crit Damage", _pct(1.0 + extra_cc), Color("#66bb6a"))
 
 	# Powers
 	var show_elem: bool = abs(elemental_power - 1.0) > 0.001
