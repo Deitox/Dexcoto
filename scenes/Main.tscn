@@ -32,17 +32,9 @@ offset_bottom = 56.0
 [node name="HBoxContainer" type="HBoxContainer" parent="UI/MarginContainer"]
 layout_mode = 2
 
-[node name="Health" type="Label" parent="UI/MarginContainer/HBoxContainer"]
-layout_mode = 2
-text = "HP: 100"
-
-[node name="Level" type="Label" parent="UI/MarginContainer/HBoxContainer"]
-layout_mode = 2
-text = "  |  Lv: 1 (0/10)"
-
 [node name="Wave" type="Label" parent="UI/MarginContainer/HBoxContainer"]
 layout_mode = 2
-text = "  |  Wave: 1"
+text = "Wave: 1"
 
 [node name="Time" type="Label" parent="UI/MarginContainer/HBoxContainer"]
 layout_mode = 2
@@ -51,6 +43,56 @@ text = "  |  Time: 20"
 [node name="Score" type="Label" parent="UI/MarginContainer/HBoxContainer"]
 layout_mode = 2
 text = "  |  Score: 0"
+
+[node name="TopCenter" type="VBoxContainer" parent="UI"]
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -220.0
+offset_top = 20.0
+offset_right = 220.0
+theme_override_constants/separation = 6
+
+[node name="HPBar" type="ProgressBar" parent="UI/TopCenter"]
+layout_mode = 2
+custom_minimum_size = Vector2(440, 36)
+value = 100.0
+show_percentage = false
+
+[node name="HPLabel" type="Label" parent="UI/TopCenter/HPBar"]
+layout_mode = 2
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+theme_override_font_sizes/font_size = 18
+text = "0 / 0"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="LevelBar" type="ProgressBar" parent="UI/TopCenter"]
+layout_mode = 2
+custom_minimum_size = Vector2(440, 26)
+show_percentage = false
+
+[node name="XPLabel" type="Label" parent="UI/TopCenter/LevelBar"]
+layout_mode = 2
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+theme_override_font_sizes/font_size = 16
+text = "0 / 0"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="LevelLabel" type="Label" parent="UI/TopCenter/LevelBar"]
+layout_mode = 2
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+theme_override_font_sizes/font_size = 16
+text = "Lv 1"
+horizontal_alignment = 2
+vertical_alignment = 1
 
 [node name="CenterContainer" type="CenterContainer" parent="UI"]
 anchors_preset = 15

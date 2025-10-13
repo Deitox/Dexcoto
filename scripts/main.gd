@@ -38,8 +38,11 @@ func _refresh_stats_panel_now() -> void:
 @onready var player: Node2D = $Player
 @onready var wave_timer: Timer = $WaveTimer
 @onready var spawn_timer: Timer = $SpawnTimer
-@onready var ui_health: Label = $UI/MarginContainer/HBoxContainer/Health
-@onready var ui_level: Label = $UI/MarginContainer/HBoxContainer/Level
+@onready var ui_hp_bar: ProgressBar = $UI/TopCenter/HPBar
+@onready var ui_xp_bar: ProgressBar = $UI/TopCenter/LevelBar
+@onready var ui_hp_label: Label = $UI/TopCenter/HPBar/HPLabel
+@onready var ui_xp_label: Label = $UI/TopCenter/LevelBar/XPLabel
+@onready var ui_level_label: Label = $UI/TopCenter/LevelBar/LevelLabel
 @onready var ui_wave: Label = $UI/MarginContainer/HBoxContainer/Wave
 @onready var ui_time: Label = $UI/MarginContainer/HBoxContainer/Time
 @onready var ui_score: Label = $UI/MarginContainer/HBoxContainer/Score
@@ -466,18 +469,32 @@ func add_score(kills: int, reward_pts: int) -> void:
 		player.heal(player.lifesteal_per_kill * kills)
 
 func _update_ui() -> void:
-	if ui_health:
-		ui_health.text = "HP: %d" % player.health
+	if ui_hp_bar:
+		var max_hp = max(1, player.max_health)
+		var hp_value = clamp(player.health, 0, player.max_health)
+		ui_hp_bar.max_value = max_hp
+		ui_hp_bar.value = hp_value
+		ui_hp_bar.tooltip_text = "HP: %d / %d" % [hp_value, max_hp]
+		if ui_hp_label:
+			ui_hp_label.text = "%d / %d" % [hp_value, max_hp]
+	if ui_xp_bar:
+		var need := _xp_for_next_level(level)
+		var max_need = max(1, need)
+		var shown_xp = clamp(xp, 0, max_need)
+		ui_xp_bar.max_value = max_need
+		ui_xp_bar.value = min(shown_xp, ui_xp_bar.max_value)
+		ui_xp_bar.tooltip_text = "XP: %d / %d   Lv %d" % [xp, need, level]
+		if ui_xp_label:
+			ui_xp_label.text = "%d / %d" % [shown_xp, need]
+		if ui_level_label:
+			ui_level_label.text = "Lv %d" % level
 	if ui_wave:
 		var diff_label := String(difficulty)
-		ui_wave.text = "  |  Wave: %d  (%s)" % [wave, diff_label]
+		ui_wave.text = "Wave: %d  (%s)" % [wave, diff_label]
 	if ui_time:
 		ui_time.text = "  |  Time: %d" % int(max(0.0, wave_time - elapsed))
 	if ui_score:
 		ui_score.text = "  |  Score: %d" % score
-	if ui_level:
-		var need := _xp_for_next_level(level)
-		ui_level.text = "  |  Lv: %d (%d/%d)" % [level, xp, need]
 	_update_weapons_hud()
 
 func _update_weapons_hud() -> void:
