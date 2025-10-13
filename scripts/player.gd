@@ -623,11 +623,33 @@ func apply_move_speed_multiplier(mult: float) -> void:
 		currency_gain_mult *= of
 		overflow_currency_mult_from_move_speed *= of
 
+func add_move_speed_bonus(add: float) -> void:
+	if add <= 0.0:
+		return
+	var cap_speed: float = max(1.0, base_move_speed) * MAX_MOVE_SPEED_MULT
+	move_speed += base_move_speed * add
+	if move_speed > cap_speed:
+		var overflow_factor: float = move_speed / cap_speed
+		move_speed = cap_speed
+		var of = max(1.0, overflow_factor)
+		currency_gain_mult *= of
+		overflow_currency_mult_from_move_speed *= of
+
 # Applies a multiplicative change to attack speed with a cap.
 # Overflow beyond cap converts into Damage multiplier and tracked overflow.
 func apply_attack_speed_multiplier(mult: float) -> void:
 	var m = max(0.0, mult)
 	attack_speed_mult *= m
+	if attack_speed_mult > MAX_ATTACK_SPEED_MULT:
+		var overflow_factor: float = attack_speed_mult / MAX_ATTACK_SPEED_MULT
+		attack_speed_mult = MAX_ATTACK_SPEED_MULT
+		damage_mult *= overflow_factor
+		overflow_damage_mult_from_attack_speed *= overflow_factor
+
+func add_attack_speed_bonus(add: float) -> void:
+	if add <= 0.0:
+		return
+	attack_speed_mult += add
 	if attack_speed_mult > MAX_ATTACK_SPEED_MULT:
 		var overflow_factor: float = attack_speed_mult / MAX_ATTACK_SPEED_MULT
 		attack_speed_mult = MAX_ATTACK_SPEED_MULT
@@ -821,19 +843,19 @@ func _apply_stack_effect(stype: String, conf: Dictionary, source_weapon: Diction
 	match stype:
 		"damage":
 			var inc: float = float(conf.get("per_stack", 0.02))
-			damage_mult *= (1.0 + inc)
+			damage_mult += inc
 			_show_stack_cue("+%d%% Damage" % int(round(inc*100.0)), Color(1.0,0.5,0.5))
 		"attack_speed":
 			var inc2: float = float(conf.get("per_stack", 0.02))
-			apply_attack_speed_multiplier(1.0 + inc2)
+			add_attack_speed_bonus(inc2)
 			_show_stack_cue("+%d%% Attack Speed" % int(round(inc2*100.0)), Color(0.6,1.0,0.6))
 		"projectile_speed":
 			var inc_ps: float = float(conf.get("per_stack", 0.05))
-			projectile_speed_mult *= (1.0 + inc_ps)
+			projectile_speed_mult += inc_ps
 			_show_stack_cue("+%d%% Proj Speed" % int(round(inc_ps*100.0)), Color(0.6,0.9,1.0))
 		"move_speed":
 			var inc_ms: float = float(conf.get("per_stack", 0.02))
-			apply_move_speed_multiplier(1.0 + inc_ms)
+			add_move_speed_bonus(inc_ms)
 			_show_stack_cue("+%d%% Move Speed" % int(round(inc_ms*100.0)), Color(0.8,0.9,1.0))
 		"max_hp":
 			var add: int = int(conf.get("per_stack", 2))

@@ -392,4 +392,3 @@ func _clear_status_visuals() -> void:
 		poly.color = _base_poly_color
 	_clear_ignite_fx()
 	_clear_void_aura()
-
