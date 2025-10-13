@@ -637,7 +637,7 @@ func _show_shop() -> void:
 		var sold := bool(o.get("sold", false))
 		var locked := bool(o.get("locked", false))
 		var display_name: String = String(o.get("name","?"))
-		var label := "%s - %d$\n%s" % [display_name, int(o["cost"]), o.get("desc", "")]
+		var label := "%s - $%d\n%s" % [display_name, int(o["cost"]), o.get("desc", "")]
 		if sold:
 			label = "%s\n[SOLD OUT]" % o["name"]
 		elif locked:
