@@ -1215,6 +1215,8 @@ func _show_character_select() -> void:
 		b.add_theme_color_override("font_color", col)
 		b.pressed.connect(Callable(self, "_on_character_chosen").bind(ch))
 		char_opts.add_child(b)
+	if character_panel and character_panel.has_method("_refresh_buttons"):
+		character_panel.call_deferred("_refresh_buttons")
 	char_title.text = "Choose Your Character"
 	# Pause during character selection (original behavior); PausePanel handles ESC to resume.
 	get_tree().paused = true

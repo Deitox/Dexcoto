@@ -1,4 +1,4 @@
-[gd_scene load_steps=13 format=3 uid="uid://bhxdr0hkjjdby"]
+[gd_scene load_steps=14 format=3 uid="uid://bhxdr0hkjjdby"]
 
 [ext_resource type="Script" uid="uid://bb4or323ojirr" path="res://scripts/main.gd" id="1"]
 [ext_resource type="PackedScene" path="res://scenes/Player.tscn" id="2"]
@@ -12,6 +12,7 @@
 [ext_resource type="Script" uid="uid://c4okqu8rvwqw8" path="res://scripts/pause_panel.gd" id="10"]
 [ext_resource type="Script" uid="uid://d1jjya7efdky8" path="res://scripts/item_summary.gd" id="11"]
 [ext_resource type="Script" uid="uid://nsgytfg2e5lw" path="res://scripts/stats_panel.gd" id="12"]
+[ext_resource type="Script" path="res://scripts/character_select_panel.gd" id="13"]
 
 [node name="Main" type="Node2D"]
 script = ExtResource("1")
@@ -363,6 +364,7 @@ size_flags_horizontal = 3
 size_flags_vertical = 3
 
 [node name="CharacterSelect" type="Panel" parent="UI"]
+script = ExtResource("13")
 process_mode = 2
 visible = false
 anchors_preset = 15
