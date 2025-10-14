@@ -976,7 +976,7 @@ func _guardian_healing_merge_counts() -> void:
 			var count: int = int(_guardian_healing_counts.get(tier, 0))
 			if count < 3:
 				continue
-			var merges: int = count / 3
+			var merges: int = count // 3
 			_guardian_healing_counts[tier] = count % 3
 			var higher: int = tier + 1
 			var higher_count: int = int(_guardian_healing_counts.get(higher, 0))
