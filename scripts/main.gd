@@ -205,6 +205,16 @@ func _center_player_in_arena() -> void:
 	else:
 		player.global_position = cpos2
 
+func get_arena_center() -> Vector2:
+	if arena_bounds and arena_bounds.has_method("get_arena_rect"):
+		var r: Rect2 = arena_bounds.call("get_arena_rect")
+		return r.position + r.size * 0.5
+	var viewport := get_viewport()
+	if viewport:
+		var rect := viewport.get_visible_rect()
+		return rect.position + rect.size * 0.5
+	return Vector2.ZERO
+
 func _process(delta: float) -> void:
 	if is_game_over:
 		return
@@ -1073,13 +1083,22 @@ func _spawn_boss_for_wave() -> void:
 func _balance_turrets() -> void:
 	# Merge turrets if too many: combine 3 of same tier into 1 of next tier until <= 5 remain
 	var all := get_tree().get_nodes_in_group("turrets")
+	var eligible: Array = []
+	for t in all:
+		if t == null:
+			continue
+		if t.has_method("get"):
+			var anchor_flag = t.get("guardian_anchor")
+			if anchor_flag != null and bool(anchor_flag):
+				continue
+		eligible.append(t)
 	var max_allowed := 5
-	var total := all.size()
+	var total := eligible.size()
 	if total <= max_allowed:
 		return
 	# Build tier map
 	var by_tier := {}
-	for t in all:
+	for t in eligible:
 		var ti := int(t.get("tier")) if t.has_method("get") else 1
 		var role := "attack"
 		if t.has_method("get"):
@@ -1132,11 +1151,12 @@ func _balance_turrets() -> void:
 		if not changed:
 			break
 
-func _spawn_turret_at_with_tier(pos: Vector2, tier: int, mode: String = "attack") -> void:
+func _spawn_turret_at_with_tier(pos: Vector2, tier: int, mode: String = "attack") -> Node:
 	if TURRET_SCENE == null:
-		return
+		return null
+	var turret: Node = null
 	if turret_pool and turret_pool.has_method("spawn_turret"):
-		turret_pool.call("spawn_turret", pos, tier, mode)
+		turret = turret_pool.call("spawn_turret", pos, tier, mode)
 	else:
 		var t = TURRET_SCENE.instantiate()
 		add_child(t)
@@ -1148,6 +1168,8 @@ func _spawn_turret_at_with_tier(pos: Vector2, tier: int, mode: String = "attack"
 				t.set_tier(tier)
 			if t.has_method("add_to_group"):
 				t.add_to_group("turrets")
+		turret = t
+	return turret
 
 func _notify(msg: String, col: Color = Color(1,1,1)) -> void:
 	var n := $UI/Notifications if has_node("UI/Notifications") else null

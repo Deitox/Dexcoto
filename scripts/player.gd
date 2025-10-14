@@ -53,6 +53,10 @@ var hemorrhage_shockwave_radius: float = 0.0
 var _hemorrhage_shockwave_triggers: int = 0
 var _hemorrhage_shockwave_processing: bool = false
 
+var _guardian_healing_turret: Node = null
+var _guardian_healing_counts: Dictionary = {}
+var _guardian_healing_active_tier: int = 0
+
 # Debug/guard against rare teleport glitches
 var _last_pos: Vector2 = Vector2.ZERO
 var _teleport_log_cooldown: float = 0.0
@@ -907,23 +911,94 @@ func _handle_defense_overflow(conf: Dictionary, weapon_id: String, weapon_tier: 
 		_show_stack_cue("+%d%% Healing Power" % int(round(overflow_gain * 100.0)), Color(0.6, 1.0, 0.9))
 
 func _spawn_guardian_healing_turret(tier: int) -> void:
-	var pos := global_position + Vector2(randf_range(-80, 80), randf_range(-80, 80))
-	var spawned := false
 	var main := get_tree().current_scene
-	if main and main.has_method("_spawn_turret_at_with_tier"):
-		main.call("_spawn_turret_at_with_tier", pos, max(1, tier), "healing")
-		spawned = true
-	elif main and main.has_method("_spawn_turret_at"):
-		# Fallback: spawn default turret and immediately convert via pool if possible
-		main.call("_spawn_turret_at", pos, "healing")
-		spawned = true
+	var stack_tier: int = max(1, tier)
+	var center := global_position
+	if main and main.has_method("get_arena_center"):
+		center = main.call("get_arena_center")
+	# Drop stale reference if pooled away
+	if _guardian_healing_turret != null and not is_instance_valid(_guardian_healing_turret):
+		_guardian_healing_turret = null
+	if _guardian_healing_turret == null:
+		var spawned: Variant = null
+		if main and main.has_method("_spawn_turret_at_with_tier"):
+			spawned = main.call("_spawn_turret_at_with_tier", center, stack_tier, "healing")
+		elif main and main.has_method("_spawn_turret_at"):
+			main.call("_spawn_turret_at", center, "healing")
+		if spawned == null:
+			var tp = get_tree().get_first_node_in_group("turret_pool")
+			if tp and tp.has_method("spawn_turret"):
+				spawned = tp.call("spawn_turret", center, stack_tier, "healing")
+		if spawned is Node:
+			_guardian_healing_turret = spawned
+		if _guardian_healing_turret == null or not is_instance_valid(_guardian_healing_turret):
+			return
+		_guardian_healing_counts = {}
+		_guardian_healing_active_tier = 0
+	var upgraded := _guardian_healing_add_stack(stack_tier, center)
+	if upgraded:
+		_show_stack_cue("Healing Turret T%d" % _guardian_healing_active_tier, Color(0.6, 1.0, 0.9))
 	else:
-		var tp = get_tree().get_first_node_in_group("turret_pool")
-		if tp and tp.has_method("spawn_turret"):
-			tp.call("spawn_turret", pos, max(1, tier), "healing")
-			spawned = true
-	if spawned:
-		_show_stack_cue("+Healing Turret", Color(0.6, 1.0, 0.9))
+		_show_stack_cue("Healing Turret Stack +1", Color(0.6, 1.0, 0.9))
+
+func _guardian_healing_add_stack(stack_tier: int, center: Vector2) -> bool:
+	stack_tier = max(1, stack_tier)
+	if _guardian_healing_counts == null:
+		_guardian_healing_counts = {}
+	var prev_highest: int = _guardian_healing_active_tier
+	var current_count: int = int(_guardian_healing_counts.get(stack_tier, 0))
+	_guardian_healing_counts[stack_tier] = current_count + 1
+	_guardian_healing_merge_counts()
+	var highest: int = _guardian_healing_highest_tier()
+	if highest <= 0:
+		highest = stack_tier
+	_guardian_healing_active_tier = max(1, highest)
+	if _guardian_healing_turret:
+		_guardian_healing_turret.set("guardian_anchor", true)
+		if _guardian_healing_turret.has_method("set_tier"):
+			_guardian_healing_turret.call("set_tier", _guardian_healing_active_tier)
+		var turret_node := _guardian_healing_turret as Node2D
+		if turret_node:
+			turret_node.global_position = center
+			turret_node.visible = true
+	return _guardian_healing_active_tier > prev_highest
+
+func _guardian_healing_merge_counts() -> void:
+	if _guardian_healing_counts == null:
+		_guardian_healing_counts = {}
+	var changed := true
+	while changed:
+		changed = false
+		var tiers: Array = _guardian_healing_counts.keys()
+		tiers.sort()
+		for raw_tier in tiers:
+			var tier: int = int(raw_tier)
+			var count: int = int(_guardian_healing_counts.get(tier, 0))
+			if count < 3:
+				continue
+			var merges: int = count / 3
+			_guardian_healing_counts[tier] = count % 3
+			var higher: int = tier + 1
+			var higher_count: int = int(_guardian_healing_counts.get(higher, 0))
+			_guardian_healing_counts[higher] = higher_count + merges
+			changed = true
+		var cleanup: Array = []
+		for raw_key in _guardian_healing_counts.keys():
+			if int(_guardian_healing_counts[raw_key]) <= 0:
+				cleanup.append(raw_key)
+		for key in cleanup:
+			_guardian_healing_counts.erase(key)
+
+func _guardian_healing_highest_tier() -> int:
+	var highest := 0
+	for raw_key in _guardian_healing_counts.keys():
+		var count: int = int(_guardian_healing_counts[raw_key])
+		if count <= 0:
+			continue
+		var tier: int = int(raw_key)
+		if tier > highest:
+			highest = tier
+	return highest
 
 func _show_stack_cue(msg: String, col: Color) -> void:
 	# Simple ring cue above the player

@@ -13,6 +13,7 @@ var _cd: float = 0.0
 var active: bool = true
 var pool: Node = null
 var turret_role: String = "attack"
+var guardian_anchor: bool = false
 var heal_amount: int = 6
 var healing_aura: Line2D = null
 var aura_time: float = 0.0
@@ -260,6 +261,7 @@ func _update_healing_aura() -> void:
 
 func activate(pos: Vector2, t: int, p: Node, mode := "attack") -> void:
 	_stop_active_beam()
+	guardian_anchor = false
 	bullet_pool = get_tree().get_first_node_in_group("bullet_pool")
 	turret_role = String(mode)
 	global_position = pos
@@ -284,6 +286,7 @@ func deactivate() -> void:
 	_stop_active_beam()
 	active = false
 	visible = false
+	guardian_anchor = false
 	if is_in_group("turrets"):
 		remove_from_group("turrets")
 	if is_in_group("healing_turrets"):
