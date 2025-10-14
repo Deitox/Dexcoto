@@ -180,6 +180,21 @@ func _ensure_default_input_actions() -> void:
 			"buttons": [JOY_BUTTON_DPAD_LEFT],
 			"motions": [{ "axis": JOY_AXIS_LEFT_X, "value": -1.0 }],
 		},
+		"shop_lock": {
+			"keys": [Key.KEY_Q],
+			"buttons": [JOY_BUTTON_X],
+			"motions": [],
+		},
+		"shop_reroll": {
+			"keys": [Key.KEY_R],
+			"buttons": [JOY_BUTTON_Y],
+			"motions": [],
+		},
+		"shop_start": {
+			"keys": [Key.KEY_N],
+			"buttons": [JOY_BUTTON_B],
+			"motions": [],
+		},
 		"ui_right": {
 			"keys": [Key.KEY_RIGHT, Key.KEY_D],
 			"buttons": [JOY_BUTTON_DPAD_RIGHT],
@@ -976,7 +991,7 @@ func _guardian_healing_merge_counts() -> void:
 			var count: int = int(_guardian_healing_counts.get(tier, 0))
 			if count < 3:
 				continue
-			var merges: int = count // 3
+			var merges: int = int(floor(float(count) / 3.0))
 			_guardian_healing_counts[tier] = count % 3
 			var higher: int = tier + 1
 			var higher_count: int = int(_guardian_healing_counts.get(higher, 0))

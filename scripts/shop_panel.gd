@@ -71,6 +71,20 @@ func _input(event: InputEvent) -> void:
 		_cycle_focus(1)
 		accept_event()
 		return
+	if event.is_action_pressed("shop_lock"):
+		_toggle_lock_focused()
+		accept_event()
+		return
+	if event.is_action_pressed("shop_reroll"):
+		if reroll and reroll.visible and not reroll.disabled:
+			_reroll()
+		accept_event()
+		return
+	if event.is_action_pressed("shop_start"):
+		if start_btn and start_btn.visible and not start_btn.disabled:
+			_start()
+		accept_event()
+		return
 	if event.is_action_pressed("ui_accept"):
 		_activate_focused()
 		accept_event()
@@ -133,3 +147,14 @@ func _on_option_focus(index: int) -> void:
 
 func _on_option_hover(index: int) -> void:
 	_focused_index = clamp(index, 0, _option_buttons.size() - 1)
+
+func _toggle_lock_focused() -> void:
+	if _option_buttons.is_empty():
+		return
+	_focused_index = clamp(_focused_index, 0, _option_buttons.size() - 1)
+	var btn := _option_buttons[_focused_index]
+	if not _is_button_focusable(btn):
+		return
+	var main := get_tree().current_scene
+	if main and main.has_method("_on_shop_toggle_lock"):
+		main._on_shop_toggle_lock(_focused_index)

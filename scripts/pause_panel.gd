@@ -14,3 +14,11 @@ func _input(event: InputEvent) -> void:
 		elif main and main.has_method("_toggle_pause"):
 			main._toggle_pause()
 		accept_event()
+		return
+	if event.is_action_pressed("shop_start"):
+		var main2 := get_tree().current_scene
+		if main2 and main2.has_method("_on_pause_resume"):
+			main2._on_pause_resume()
+		elif main2 and main2.has_method("_toggle_pause"):
+			main2._toggle_pause()
+		accept_event()
